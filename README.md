@@ -1,5 +1,5 @@
 # Blackjack Game
-This project is meant to be a tool in learning more about blackjack and how much one might expect to win from playing it.
+This project is meant to be a tool in learning more about blackjack and how much one might expect to win from playing it. Details on compiling and running are found at the bottom.
 ## Functionality
 The program has 2 different purposes: practicing and simulating, both of which are configurable.
 ### Practice
