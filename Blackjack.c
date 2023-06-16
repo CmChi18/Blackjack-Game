@@ -441,7 +441,6 @@ void evaluate_winnings(player * player_list, hand * dealer_hand) {
         hand * hand_ptr = player_ptr->hands;
         
         while (hand_ptr != NULL) {
-            player_ptr->hand_count++;
             printf("%s: ", player_ptr->id);
 
             short winnings = player_ptr->bet.amount * player_ptr->bet.multiplier;
@@ -470,19 +469,16 @@ void evaluate_winnings(player * player_list, hand * dealer_hand) {
             switch (outcome) {
                 case LOSE:
                     printf("Lose %hd.\n", winnings);
-                    player_ptr->losses++;
                     winnings *= -1;
                     player_ptr->win_streak = 0;
                     break;
                 case PUSH:
                     printf("Push.\n");
                     winnings = 0;
-                    player_ptr->pushes++;
                     player_ptr->win_streak = 0;
                     break;
                 case WIN:
                     printf("%sWin %hd.\n", (hand_ptr->is_bj) ? "Blackjack! " : "", winnings);
-                    player_ptr->wins++;
                     player_ptr->win_streak++;
             }
             
