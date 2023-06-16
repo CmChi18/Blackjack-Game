@@ -10,7 +10,7 @@
 card * g_deck = NULL;
 int g_deck_index = 0;
 int g_card_count = 0;
-settings g_settings = { 0 };
+settings g_settings = { 1, 1, 0.5, true, false, false };
 
 int main(void) {
     
