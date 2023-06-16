@@ -133,10 +133,6 @@ typedef struct player {
     struct player * next;
     char * id;
     int winnings;
-    long wins;
-    long pushes;
-    long losses;
-    long hand_count;
     short win_streak;
 } player;
 
