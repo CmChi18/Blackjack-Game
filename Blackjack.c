@@ -424,8 +424,9 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
                     }
                 }
             }
-            break;
     }
+    return 0;
+    
 } // evaluate_decision() //
 
 // evaluate_winnings()
@@ -739,7 +740,7 @@ short load_players(char * file_name, player ** player_head) {
 // g_settings.
 
 void load_settings(char * file) {
-    
+
     FILE *f = fopen(file, "rb");
     if (f == NULL) {
         printf("There was an error accessing the settings file.\n");
