@@ -158,20 +158,16 @@ void change_settings(char * file) {
     
 } // change_settings() //
 
-// create_player()
+// create_hand()
 //
 // This method allocates memory and returns a pointer for a
-// new player, or null if there was an issue.
+// new player.
 
-player * create_player(char * id, enum algorithm algorithm, float ratio, short intensity, short bet_amount) {
+hand * create_hand(void) {
     
-    // Allocate memory for player
-    player * player_ptr = malloc(sizeof(player));
+    // Allocate memory for hand
     hand * hand_ptr = malloc(sizeof(hand));
-    player_ptr->id = malloc(strlen(id) + 1);
-    
-    // Check for memory errors
-    if ((player_ptr == NULL) || (hand_ptr == NULL) || (player_ptr->id == NULL)) {
+    if (hand_ptr == NULL) {
         return NULL;
     }
     
@@ -183,6 +179,27 @@ player * create_player(char * id, enum algorithm algorithm, float ratio, short i
     hand_ptr->is_bj = false;
     hand_ptr->is_double = false;
     hand_ptr->next = NULL;
+    
+    return hand_ptr;
+    
+} // create_hand() //
+
+// create_player()
+//
+// This method allocates memory and returns a pointer for a
+// new player, or null if there was an issue.
+
+player * create_player(char * id, enum algorithm algorithm, float ratio, short intensity, short bet_amount) {
+    
+    // Allocate memory for player
+    player * player_ptr = malloc(sizeof(player));
+    hand * hand_ptr = create_hand();
+    player_ptr->id = malloc(strlen(id) + 1);
+    
+    // Check for memory errors
+    if ((player_ptr == NULL) || (hand_ptr == NULL) || (player_ptr->id == NULL)) {
+        return NULL;
+    }
     
     // Set player attributes
     player_ptr->hands = hand_ptr;
@@ -534,7 +551,7 @@ void free_players(player * player_list, bool reset) {
         
         if (reset) {
             // If only resetting, we need to reallocate a hand to the player
-            temp->hands = malloc(sizeof(hand));
+            temp->hands = create_hand();
             if (temp->hands == NULL) {
                 exit(MEMORY_ERROR);
             }
@@ -962,7 +979,7 @@ void reset_dealer(dealer * dealer) {
 void split_hand(hand * hand_ptr, bool recurse) {
     
     // Create new hand
-    hand * new_hand_ptr = malloc(sizeof(hand));
+    hand * new_hand_ptr = create_hand();
     if (new_hand_ptr == NULL) {
         exit(MEMORY_ERROR);
     }
