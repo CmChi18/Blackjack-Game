@@ -133,6 +133,10 @@ typedef struct player {
     struct player * next;
     char * id;
     int winnings;
+    long wins;
+    long pushes;
+    long losses;
+    long hand_count;
     short win_streak;
 } player;
 
@@ -149,6 +153,7 @@ extern settings g_settings;
 
 void add_to_hand(hand *, card *);
 void adjust_bet(player *);
+hand * create_hand(void);
 player * create_player(char *, enum algorithm, float, short, short);
 short create_players(int, player **);
 void change_settings(char *);
