@@ -175,6 +175,15 @@ player * create_player(char * id, enum algorithm algorithm, float ratio, short i
         return NULL;
     }
     
+    // Set hand attributes
+    hand_ptr->aces = 0;
+    hand_ptr->card_count = 0;
+    hand_ptr->cards = NULL;
+    hand_ptr->hand_total = 0;
+    hand_ptr->is_bj = false;
+    hand_ptr->is_double = false;
+    hand_ptr->next = NULL;
+    
     // Set player attributes
     player_ptr->hands = hand_ptr;
     player_ptr->next = NULL;
