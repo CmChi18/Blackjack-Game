@@ -512,16 +512,7 @@ void evaluate_winnings(player * player_list, hand * dealer_hand, bool print) {
                     if (print) printf("%sWin %hd.\n", (hand_ptr->is_bj) ? "Blackjack! " : "", winnings);
                     player_ptr->win_streak++;
             }
-            
-            FILE *f = fopen("File.txt", "aw");
-            
-            fprintf(f, "%s %s %hd -> %hd\n", print_hand_str(dealer_hand, false), print_hand_str(hand_ptr, false), (short) (player_ptr->bet.amount * player_ptr->bet.multiplier), winnings);
-            if (dealer_hand->cards[0]->number == 10) {
-                fprintf(f, "*\n");
-            }
-             
-            //fprintf(f, "%hd,", winnings);
-            fclose(f);
+       
             player_ptr->winnings += winnings;
             hand_ptr = hand_ptr->next;
         }
