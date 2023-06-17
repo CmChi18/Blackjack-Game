@@ -54,6 +54,7 @@ enum action {
     CHANGE_SOFT,
     CHANGE_INSURANCE,
     CHANGE_EVAL,
+    CHANGE_PRINT,
     CHANGE_ID = 1,
     CHANGE_ALGORITHM,
     CHANGE_RATIO,
@@ -68,8 +69,8 @@ enum algorithm {
 };
 
 enum decision {
-    HIT = 1,
     STAND,
+    HIT,
     DOUBLE,
     SPLIT
 };
@@ -103,6 +104,8 @@ typedef struct settings {
     bool insurance_rule;
     // Are decision evaluations shown
     bool show_eval;
+    // Print each hand during simulations
+    bool print_hands;
 } settings;
 
 typedef struct bet {
@@ -159,7 +162,7 @@ short create_players(int, player **);
 void change_settings(char *);
 void deal(player *, dealer *);
 enum evaluation evaluate_decision(hand *, short, enum decision);
-void evaluate_winnings(player *, hand *);
+void evaluate_winnings(player *, hand *, bool);
 void free_dealer(dealer *);
 void free_players(player *, bool);
 float get_input(void);
