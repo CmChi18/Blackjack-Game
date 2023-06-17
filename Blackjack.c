@@ -6,7 +6,6 @@
 //
 
 #include "Blackjack.h"
-#define COND_PRINT(x, y) ( (print) ? printf(x) : printf("") )
 
 /* Constant declarations */
 
