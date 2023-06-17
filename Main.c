@@ -207,6 +207,7 @@ Master:
             
             short player_count = 0;
             player * player_list = NULL;
+            player * player_ptr = player_list;
             
             while (true) {
                 
@@ -320,7 +321,7 @@ Master:
                     while (true) {
                         
                         short player_choice = 0;
-                        player * player_ptr = player_list;
+                        player_ptr = player_list;
                         
                         while (true) {
                             
@@ -489,6 +490,7 @@ Master:
                                 
                                 player_ptr->bet.amount = new_amount;
                                 printf("%s's betting amount is now %hd.\n", player_ptr->id, player_ptr->bet.amount);
+                                
                             } else if (action == CHANGE_INTENSITY) {
                                 
                                 float new_intensity = 0;
@@ -548,7 +550,7 @@ Master:
                         printf("There were no players to write.\n");
                         continue;
                     } else {
-                        printf("Wrote %hd players successfully.\n", written_players);
+                        printf("Wrote %hd player%s successfully.\n", written_players, (player_count == 1) ? "" : "s");
                         player_count = written_players;
                     }
                 }
@@ -573,7 +575,7 @@ Master:
             for (int i = 0; i < iterations; i++) {
                 
                 printf("============================================\n\n");
-                player * player_ptr = player_list;
+                player_ptr = player_list;
                 
                 // Check if deck needs to be shuffled
                 float deck_percent = g_deck_index / (float) g_card_count;
@@ -587,7 +589,6 @@ Master:
                 dealer.hand.is_bj = (dealer.hand.hand_total == 21);
                 while (player_ptr != NULL) {
                     player_ptr->hands->is_bj = (player_ptr->hands->hand_total == 21);
-                    player_ptr->bet.amount = 10;
                     player_ptr = player_ptr->next;
                 }
                 
@@ -619,7 +620,7 @@ Master:
             }
             
             printf("================> Winnings <================\n");
-            player * player_ptr = player_list;
+            player_ptr = player_list;
             while (player_ptr != NULL) {
                 printf("%s: %d\n", player_ptr->id, player_ptr->winnings);
                 player_ptr = player_ptr->next;
