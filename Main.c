@@ -270,7 +270,6 @@ Master:
                         printf("============================================\n");
                         printf("Enter 1 to try again or 0 to exit: ");
                         
-                        
                         while (true) {
                             action = (short) get_input();
                             if (action == INPUT_ERROR || action < 0 || action > 1) {
@@ -289,7 +288,7 @@ Master:
                         printf("There were no players to read in.\n");
                         goto Master;
                     } else {
-                        printf("Loaded %hd players successfully.\n", read_players);
+                        printf("Loaded %hd player%s successfully.\n", read_players, (read_players == 1) ? "" : "s");
                         player_count = read_players;
                         break;
                     }
@@ -361,160 +360,161 @@ Master:
                             for (int i = 1; i < player_choice; i++) {
                                 player_ptr = player_ptr->next;
                             }
-                            
-                            printf("==================> Edit <==================\n\n");
-                            printf("1. ID : %s\n", player_ptr->id);
-                            printf("2. Betting algorithm: ");
-                            switch (player_ptr->bet.algorithm) {
-                                case CONSTANT:
-                                    printf("Constant\n");
-                                    break;
-                                case LINEAR:
-                                    printf("Linear\n");
-                                    break;
-                                case EXPONENTIAL:
-                                    printf("Exponential\n");
-                            }
-                            printf("3. Betting ratio: %.2f\n", player_ptr->bet.ratio);
-                            printf("4. Betting amount: %hd\n", player_ptr->bet.amount);
-                            printf("5. Betting intensity: %hd\n", player_ptr->bet.intensity);
-                            printf("0. Go back\n");
-                            printf("\n============================================\n");
-                            
                             while (true) {
-                                action = get_input();
-                                if (action == INPUT_ERROR || action < 0 || action > CHANGE_INTENSITY) {
-                                    continue;
-                                }
-                                break;
-                            }
-                            
-                            if (action == CHANGE_ID) {
-                                
-                                char new_id[MAX_ID_LEN] = { 0 };
-                                
-                                printf("===================> ID <===================\n\n");
-                                printf("The ID is the name of the player that is\n");
-                                printf("printed when results are shown.\n");
-                                printf("Max 20 characters.\n");
-                                printf("\n============================================\n");
-                                printf("Enter a new ID: ");
-                                
-                                while (true) {
-                                    if (scanf("%20s", new_id) != 1) {
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                
-                                strcpy(player_ptr->id, new_id);
-                                printf("This player's ID is now %s.\n", player_ptr->id);
-                                
-                            } else if (action == CHANGE_ALGORITHM) {
-                                
-                                enum algorithm new_alg = 0;
-                                
-                                printf("===============> Algorithm <================\n\n");
-                                printf("The algorithm is the shape at which a\n");
-                                printf("player's bet is incremented.\n\n");
-                                printf("1. Constant\n");
-                                printf("2. Linear\n");
-                                printf("3. Exponential\n");
-                                printf("\n============================================\n");
-                                
-                                while (true) {
-                                    printf("Enter a new algorithm: ");
-                                    new_alg = get_input();
-                                    if (new_alg == INPUT_ERROR || new_alg < CONSTANT || new_alg > EXPONENTIAL) {
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                
-                                player_ptr->bet.algorithm = new_alg;
-                                printf("%s's betting algorithm is now\n", player_ptr->id);
+                                printf("==================> Edit <==================\n\n");
+                                printf("1. ID : %s\n", player_ptr->id);
+                                printf("2. Betting algorithm: ");
                                 switch (player_ptr->bet.algorithm) {
                                     case CONSTANT:
-                                        printf("constant.\n");
+                                        printf("Constant\n");
                                         break;
                                     case LINEAR:
-                                        printf("linear.\n");
+                                        printf("Linear\n");
                                         break;
                                     case EXPONENTIAL:
-                                        printf("exponential.\n");
+                                        printf("Exponential\n");
                                 }
-                                
-                            } else if (action == CHANGE_RATIO) {
-                                
-                                float new_ratio = 0;
-                                
-                                printf("==================> Ratio <=================\n\n");
-                                printf("The ratio is the percentage that affects how\n");
-                                printf("much a player's bet is incremented. A ratio\n");
-                                printf("of 0.5 would increment a bet by half of the\n");
-                                printf("original or multiply it by 1.5 every time.\n");
-                                printf("The limit is a ratio of 10.\n");
+                                printf("3. Betting ratio: %.2f\n", player_ptr->bet.ratio);
+                                printf("4. Betting amount: %hd\n", player_ptr->bet.amount);
+                                printf("5. Betting intensity: %hd\n", player_ptr->bet.intensity);
+                                printf("0. Go back\n");
                                 printf("\n============================================\n");
                                 
                                 while (true) {
-                                    printf("Enter a new ratio: ");
-                                    new_ratio = get_input();
-                                    if (new_ratio == INPUT_ERROR || new_ratio < 0 || new_ratio > MAX_RATIO) {
+                                    action = get_input();
+                                    if (action == INPUT_ERROR || action < 0 || action > CHANGE_INTENSITY) {
                                         continue;
                                     }
                                     break;
                                 }
                                 
-                                player_ptr->bet.ratio = new_ratio;
-                                printf("%s's betting ratio is now %f.\n", player_ptr->id, player_ptr->bet.ratio);
-                                
-                            } else if (action == CHANGE_BET) {
-                                
-                                float new_amount = 0;
-                                
-                                printf("=================> Amount <=================\n\n");
-                                printf("The betting amount is the base amount that a\n");
-                                printf("player bets in a round, and is incremented\n");
-                                printf("according to the betting algorithm and ratio.\n");
-                                printf("The limit is %d.\n", MAX_BET);
-                                printf("\n============================================\n");
-                                
-                                while (true) {
-                                    printf("Enter a new betting amount: ");
-                                    new_amount = (short) get_input();
-                                    if (new_amount == INPUT_ERROR || new_amount < 0 || new_amount > MAX_BET) {
-                                        continue;
+                                if (action == CHANGE_ID) {
+                                    
+                                    char new_id[MAX_ID_LEN] = { 0 };
+                                    
+                                    printf("===================> ID <===================\n\n");
+                                    printf("The ID is the name of the player that is\n");
+                                    printf("printed when results are shown.\n");
+                                    printf("Max 20 characters.\n");
+                                    printf("\n============================================\n");
+                                    printf("Enter a new ID: ");
+                                    
+                                    while (true) {
+                                        if (scanf("%20s", new_id) != 1) {
+                                            continue;
+                                        }
+                                        break;
                                     }
+                                    
+                                    strcpy(player_ptr->id, new_id);
+                                    printf("This player's ID is now %s.\n", player_ptr->id);
+                                    
+                                } else if (action == CHANGE_ALGORITHM) {
+                                    
+                                    enum algorithm new_alg = 0;
+                                    
+                                    printf("===============> Algorithm <================\n\n");
+                                    printf("The algorithm is the shape at which a\n");
+                                    printf("player's bet is incremented.\n\n");
+                                    printf("1. Constant\n");
+                                    printf("2. Linear\n");
+                                    printf("3. Exponential\n");
+                                    printf("\n============================================\n");
+                                    
+                                    while (true) {
+                                        printf("Enter a new algorithm: ");
+                                        new_alg = get_input();
+                                        if (new_alg == INPUT_ERROR || new_alg < CONSTANT || new_alg > EXPONENTIAL) {
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    
+                                    player_ptr->bet.algorithm = new_alg;
+                                    printf("%s's betting algorithm is now\n", player_ptr->id);
+                                    switch (player_ptr->bet.algorithm) {
+                                        case CONSTANT:
+                                            printf("constant.\n");
+                                            break;
+                                        case LINEAR:
+                                            printf("linear.\n");
+                                            break;
+                                        case EXPONENTIAL:
+                                            printf("exponential.\n");
+                                    }
+                                    
+                                } else if (action == CHANGE_RATIO) {
+                                    
+                                    float new_ratio = 0;
+                                    
+                                    printf("==================> Ratio <=================\n\n");
+                                    printf("The ratio is the percentage that affects how\n");
+                                    printf("much a player's bet is incremented. A ratio\n");
+                                    printf("of 0.5 would increment a bet by half of the\n");
+                                    printf("original or multiply it by 1.5 every time.\n");
+                                    printf("The limit is a ratio of 10.\n");
+                                    printf("\n============================================\n");
+                                    
+                                    while (true) {
+                                        printf("Enter a new ratio: ");
+                                        new_ratio = get_input();
+                                        if (new_ratio == INPUT_ERROR || new_ratio < 0 || new_ratio > MAX_RATIO) {
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    
+                                    player_ptr->bet.ratio = new_ratio;
+                                    printf("%s's betting ratio is now %f.\n", player_ptr->id, player_ptr->bet.ratio);
+                                    
+                                } else if (action == CHANGE_BET) {
+                                    
+                                    float new_amount = 0;
+                                    
+                                    printf("=================> Amount <=================\n\n");
+                                    printf("The betting amount is the base amount that a\n");
+                                    printf("player bets in a round, and is incremented\n");
+                                    printf("according to the betting algorithm and ratio.\n");
+                                    printf("The limit is %d.\n", MAX_BET);
+                                    printf("\n============================================\n");
+                                    
+                                    while (true) {
+                                        printf("Enter a new betting amount: ");
+                                        new_amount = (short) get_input();
+                                        if (new_amount == INPUT_ERROR || new_amount < 0 || new_amount > MAX_BET) {
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    
+                                    player_ptr->bet.amount = new_amount;
+                                    printf("%s's betting amount is now %hd.\n", player_ptr->id, player_ptr->bet.amount);
+                                    
+                                } else if (action == CHANGE_INTENSITY) {
+                                    
+                                    float new_intensity = 0;
+                                    
+                                    printf("================> Intensity <===============\n\n");
+                                    printf("The betting intensity is how many rounds it\n");
+                                    printf("takes for the player to increase their bet.\n");
+                                    printf("A lower intensity is more aggessive.\n");
+                                    printf("\n============================================\n");
+                                    
+                                    while (true) {
+                                        printf("Enter a new betting intensity: ");
+                                        new_intensity = (short) get_input();
+                                        if (new_intensity == INPUT_ERROR || new_intensity < 0 || new_intensity > SHRT_MAX) {
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    
+                                    player_ptr->bet.intensity = new_intensity;
+                                    printf("%s's betting intensity is now %hd.\n", player_ptr->id, player_ptr->bet.intensity);
+                                    
+                                } else {
                                     break;
                                 }
-                                
-                                player_ptr->bet.amount = new_amount;
-                                printf("%s's betting amount is now %hd.\n", player_ptr->id, player_ptr->bet.amount);
-                                
-                            } else if (action == CHANGE_INTENSITY) {
-                                
-                                float new_intensity = 0;
-                                
-                                printf("================> Intensity <===============\n\n");
-                                printf("The betting intensity is how many rounds it\n");
-                                printf("takes for the player to increase their bet.\n");
-                                printf("A lower intensity is more aggessive.\n");
-                                printf("\n============================================\n");
-                                
-                                while (true) {
-                                    printf("Enter a new betting intensity: ");
-                                    new_intensity = (short) get_input();
-                                    if (new_intensity == INPUT_ERROR || new_intensity < 0 || new_intensity > SHRT_MAX) {
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                
-                                player_ptr->bet.intensity = new_intensity;
-                                printf("%s's betting intensity is now %hd.\n", player_ptr->id, player_ptr->bet.intensity);
-                                
-                            } else {
-                                break;
                             }
                         }
                     }
