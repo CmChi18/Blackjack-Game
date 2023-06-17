@@ -24,7 +24,7 @@ typedef struct card {
     char rank[3];
 } card;
 
-extern card * g_deck;
+extern card ** g_deck;
 extern int g_deck_index;
 extern int g_card_count;
 
