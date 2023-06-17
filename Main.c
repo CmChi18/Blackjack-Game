@@ -7,10 +7,12 @@
 
 #include "Blackjack.h"
 
-card * g_deck = NULL;
+card ** g_deck = NULL;
 int g_deck_index = 0;
 int g_card_count = 0;
-settings g_settings = { 1, 1, 50, true, false, false };
+
+// Default settings in case settings.bin is not present
+settings g_settings = { 1, 1, 50, true, false, false, false };
 
 int main(void) {
     
@@ -97,15 +99,15 @@ Master:
                                             player_hand_ptr->cards[1]->number) );
                         
                         printf("================> Practice <================\n\n");
-                        printf("Dealer's hand:%s", (is_split) ? "     " : " ");
+                        printf("Dealer's hand:%s", (is_split) ? "  " : " ");
                         print_hand(&(dealer.hand), true);
                         printf("\n");
                         print_player_hands(player, is_split, counter);
                         printf("\n");
+                        printf("0. Stand\n");
                         printf("1. Hit\n");
-                        printf("2. Stand\n");
-                        printf("%s", (player_hand_ptr->card_count == 2) ? "3. Double\n" : "");
-                        printf("%s", (can_split) ? "4. Split\n" : "");
+                        printf("%s", (player_hand_ptr->card_count == 2) ? "2. Double\n" : "");
+                        printf("%s", (can_split) ? "3. Split\n" : "");
                         printf("\n============================================\n");
                         
                         printf("Enter your choice: ");
@@ -179,7 +181,7 @@ Master:
                     printf("\n");
                     print_player_hands(player, is_split, 0);
                     printf("\n");
-                    evaluate_winnings(player, &dealer.hand);
+                    evaluate_winnings(player, &dealer.hand, true);
                     printf("\n============================================\n");
                     printf("Enter 1 to continue or 0 to quit: ");
                     cont = get_input();
@@ -215,6 +217,7 @@ Master:
                 printf("1. Create players with default configurations\n");
                 printf("2. Load configured players from a .csv file\n");
                 printf("0. Go back\n");
+                printf("\nNote: you cannot have more than %d players.\n", MAX_PLAYER);
                 printf("\n============================================\n");
                 action = (short) get_input();
                 if (action == 0) {
@@ -239,7 +242,7 @@ Master:
                     
                     printf("Enter the number of players to simulate: ");
                     player_count = (short) get_input();
-                    if (player_count == INPUT_ERROR || player_count <= 0) {
+                    if (player_count == INPUT_ERROR || player_count < 0) {
                         continue;
                     } else if (player_count > MAX_PLAYER) {
                         printf("You cannot simulate more than %d players.\n", MAX_PLAYER);
@@ -249,9 +252,18 @@ Master:
                     
                 }
                 
+                if (player_count == 0) {
+                    continue;
+                }
+                
                 created_players = create_players(player_count, &player_list);
-                printf("Created %hd players successfully.\n", created_players);
-                player_count = created_players;
+                if (created_players > 0) {
+                    printf("Created %hd player%s successfully.\n", created_players, (created_players == 1) ? "" : "s");
+                    player_count = created_players;
+                } else {
+                    printf("Could not create players.\n");
+                    continue;
+                }
                 
             }
             
@@ -415,7 +427,8 @@ Master:
                                     
                                     printf("===============> Algorithm <================\n\n");
                                     printf("The algorithm is the shape at which a\n");
-                                    printf("player's bet is incremented.\n\n");
+                                    printf("player's bet is incremented. The bet will\n");
+                                    printf("not be increased if ratio = 0.\n\n");
                                     printf("1. Constant\n");
                                     printf("2. Linear\n");
                                     printf("3. Exponential\n");
@@ -557,7 +570,7 @@ Master:
                 
             }
             
-            printf("============================================\n");
+            printf("================> Simulate <================\n");
             
             int iterations = 0;
             while (true) {
@@ -574,7 +587,7 @@ Master:
             dealer dealer = { 0 };
             for (int i = 0; i < iterations; i++) {
                 
-                printf("============================================\n\n");
+                if (g_settings.print_hands) printf("============================================\n\n");
                 player_ptr = player_list;
                 
                 // Check if deck needs to be shuffled
@@ -597,22 +610,23 @@ Master:
                     
                     hit_players(player_list, dealer.hand.cards[1]->number);
                     hit_dealer(&dealer);
-                    printf("Dealer's hand: ");
-                    print_hand(&dealer.hand, false);
-                    printf("\n");
-                    player_ptr = player_list;
-                    while (player_ptr != NULL) {
-                        print_player_hands(player_ptr, false, 0);
-                        player_ptr = player_ptr->next;
+                    if (g_settings.print_hands) {
+                        printf("Dealer's hand: ");
+                        print_hand(&dealer.hand, false);
+                        printf("\n");
+                        player_ptr = player_list;
+                        while (player_ptr != NULL) {
+                            print_player_hands(player_ptr, false, 0);
+                            player_ptr = player_ptr->next;
+                        }
+                        printf("\n");
                     }
-                    printf("\n");
                     
                 }
                 
-                evaluate_winnings(player_list, &dealer.hand);
-                printf("\n");
+                evaluate_winnings(player_list, &dealer.hand, g_settings.print_hands);
                 adjust_bet(player_list);
-                
+                if (g_settings.print_hands) printf("\n");
                 // Reset dealer and players
                 reset_dealer(&dealer);
                 free_players(player_list, true);
@@ -643,11 +657,12 @@ Master:
                     printf("4. Dealer hits a soft 17: %s\n", (g_settings.soft_rule) ? "True" : "False");
                     printf("5. Insurance (not implemented): %s\n", (g_settings.insurance_rule) ? "Enabled" : "Disabled");
                     printf("6. Evaluations: %s\n", (g_settings.show_eval) ? "Enabled" : "Disabled");
+                    printf("7. Hand Logging: %s\n", (g_settings.print_hands) ? "Enabled" : "Disabled");
                     printf("0. Go back\n");
                     printf("\n============================================\n");
                     
                     action = get_input();
-                    if (action != INPUT_ERROR && action >= 0 && action <= CHANGE_EVAL) {
+                    if (action != INPUT_ERROR && action >= 0 && action <= CHANGE_PRINT) {
                         break;
                     }
                     
@@ -775,7 +790,7 @@ Master:
                     short new_eval = 0;
                     
                     printf("============================================\n\n");
-                    printf("Change where decision evaluations are shown.\n");
+                    printf("Change whether evaluations are shown.\n");
                     printf("Enter 1 to enable or 0 to disable below.\n");
                     printf("\n============================================\n");
                     
@@ -792,10 +807,30 @@ Master:
                     change_settings("settings.bin");
                     printf("Evaluations have been %s\n", (g_settings.show_eval) ? "enabled" : "disabled");
                    
+                } else if (action == CHANGE_PRINT) {
+                    
+                    short new_print = 0;
+                    
+                    printf("============================================\n\n");
+                    printf("Change if hands are logged while simulating.\n");
+                    printf("Enter 1 to enable or 0 to disable below.\n");
+                    printf("\n============================================\n");
+                    
+                    while (true) {
+                        printf("Enter 1 or 0: ");
+                        new_print = (short) get_input();
+                        if (new_print == INPUT_ERROR || new_print < 0 || new_print > 1) {
+                            continue;
+                        }
+                        break;
+                    }
+                    
+                    g_settings.print_hands = (new_print == 1);
+                    change_settings("settings.bin");
+                    printf("Hand logging has been %s\n", (g_settings.print_hands) ? "enabled" : "disabled");
                 } else if (action == EXIT) {
                     break;
                 }
-                
             }
             
         } else if (action == EXIT) {
