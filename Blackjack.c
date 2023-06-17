@@ -1,845 +1,1101 @@
 //
-//  Main.c
+//  Blackjack.c
 //  Blackjack Game
 //
-//  Created by CmChi on 6/16/23.
+//  Created by CmChi on 3/8/23.
 //
 
 #include "Blackjack.h"
+#define COND_PRINT(x, y) ( (print) ? printf(x) : printf("") )
 
-card ** g_deck = NULL;
-int g_deck_index = 0;
-int g_card_count = 0;
+/* Constant declarations */
 
-// Default settings in case settings.bin is not present
-settings g_settings = { 1, 1, 50, true, false, false, false };
+const char reg_decision_matrix[][10] = {
+    {'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h'}, // 9
+    {'d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'h', 'h'}, //10
+    {'d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'h'}, //11
+    {'h', 'h', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}, //12
+    {'s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}, //13
+    {'s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}, //14
+    {'s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}, //15
+    {'s', 's', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}  //16
+};
 
-int main(void) {
+const char ace_decision_matrix[][10] = {
+    {'h', 'h', 'h', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, //A2
+    {'h', 'h', 'h', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, //A3
+    {'h', 'h', 'd', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, //A4
+    {'h', 'h', 'd', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, //A5
+    {'h', 'd', 'd', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, //A6
+    {'s', 'd', 'd', 'd', 'd', 's', 's', 'h', 'h', 'h'}  //A7
+};
+
+const char split_decision_matrix[][10] = {
+    {'x', 'x', 'x', 'x', 'x', 'x', 'h', 'h', 'h', 'h'}, // 2
+    {'x', 'x', 'x', 'x', 'x', 'x', 'h', 'h', 'h', 'h'}, // 3
+    {'h', 'h', 'h', 'x', 'x', 'h', 'h', 'h', 'h', 'h'}, // 4
+    {'d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'h', 'h'}, // 5
+    {'x', 'x', 'x', 'x', 'x', 'h', 'h', 'h', 'h', 'h'}, // 6
+    {'x', 'x', 'x', 'x', 'x', 'x', 'h', 'h', 'h', 'h'}, // 7
+    {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'}, // 8
+    {'x', 'x', 'x', 'x', 'x', 's', 'x', 'x', 's', 's'}, // 9
+    {'s', 's', 's', 's', 's', 's', 's', 's', 's', 's'}, //10
+    {'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x', 'x'}  //11
+};
+
+
+// add_to_hand()
+//
+// This method adds a card to a hand's list of cards
+// while updating the hand's number of aces.
+
+void add_to_hand(hand * hand, card * card_ptr) {
     
-    load_settings("settings.bin");
-    generate_deck();
+    // Check if the card being added is an ace
+    if (card_ptr->number == 11) {
+        hand->aces++;
+    }
     
-Master:
+    // Allocate a larger array of cards, check for memory error
+    card ** new_list = malloc(sizeof(card *) * (hand->card_count + 1));
+    if (new_list == NULL) {
+        exit(MEMORY_ERROR);
+    }
     
-    while (true) {
-        
-        printf("==================> Menu <==================\n\n");
-        printf("1. Practice\n");
-        printf("2. Simulate\n");
-        printf("3. Change settings\n");
-        printf("0. Exit\n");
-        printf("\n============================================\n");
-        
-        enum action action = get_input();
-        if (action == INPUT_ERROR) {
-            continue;
+    // Populate new array with cards
+    for (int i = 0; i < hand->card_count; i++) {
+        new_list[i] = hand->cards[i];
+    }
+    new_list[(int) hand->card_count] = card_ptr;
+    
+    // Adjust hand_total based on aces in the hand
+    hand->hand_total += card_ptr->number;
+    if ((hand->hand_total > 21) && (hand->aces > 0)) {
+        hand->hand_total -= 10;
+        hand->aces--;
+    }
+
+    // Free old array and assign to new_list
+    free(hand->cards);
+    hand->card_count++;
+    hand->cards = new_list;
+    
+} // add_to_hand() //
+
+// adjust_bet()
+//
+// This method adjusts the betting multiplier of the players
+// in the list by comparing the winstreak of each player
+// to their betting intensity value.
+
+void adjust_bet(player * player_list) {
+
+    player * player_ptr = player_list;
+    while (player_ptr != NULL) {
+    
+        // Reset multiplier if winstreak was broken
+        if (player_ptr->win_streak == 0) {
+            player_ptr->bet.multiplier = 1;
         }
         
-        if (action == PRACTICE) {
-            
-            shuffle_deck();
-            dealer dealer = { 0 };
-            player * player = create_player("Player", 0, 0, 0, 0);
-            
-            while (true) {
-                
-                // Check if deck needs to be shuffled
-                float deck_percent = g_deck_index / (float) g_card_count;
-                if (deck_percent * 100 > g_settings.shuffle_percent) {
-                    shuffle_deck();
-                }
-                
-                // Get the desired betting amount
-                short bet = 0;
-                printf("============================================\n");
-                while (true) {
-                    printf("Enter bet amount: ");
-                    bet = get_input();
-                    if (bet == INPUT_ERROR) {
-                        continue;
-                    } else if (bet < 0) {
-                        printf("Your bet must be a positive number.\n");
-                        printf("============================================\n");
-                        continue;
-                    } else if (bet > MAX_BET) {
-                        printf("Your bet must not exeed 1000.\n");
-                        printf("============================================\n");
-                        continue;
-                    }
-                    break;
-                }
-                player->bet.amount = bet;
-                
-                deal(player, &dealer);
-                hand * player_hand_ptr = player->hands;
-                
-                // Declare variables necessary for splits
-                short counter = 1;
-                bool is_split = false;
-                
-                // Check for blackjacks (only first hand)
-                player_hand_ptr->is_bj = (player_hand_ptr->hand_total == 21);
-                dealer.hand.is_bj = (dealer.hand.hand_total == 21);
-                
-                // Iterate through player's hands
-                while (player_hand_ptr != NULL && !player_hand_ptr->is_bj && !dealer.hand.is_bj) {
-                    
-                    // If hand has 21 or bust go to the next hand
-                    if (player_hand_ptr->hand_total >= 21) {
-                        player_hand_ptr = player_hand_ptr->next;
-                        counter++;
-                        continue;
-                    }
-                    
-                    enum decision decision = 0;
-                    while (true) {
-                        
-                        bool can_split = ( (player_hand_ptr->card_count == 2) &&
-                                           (player_hand_ptr->cards[0]->number ==
-                                            player_hand_ptr->cards[1]->number) );
-                        
-                        printf("================> Practice <================\n\n");
-                        printf("Dealer's hand:%s", (is_split) ? "  " : " ");
-                        print_hand(&(dealer.hand), true);
-                        printf("\n");
-                        print_player_hands(player, is_split, counter);
-                        printf("\n");
-                        printf("0. Stand\n");
-                        printf("1. Hit\n");
-                        printf("%s", (player_hand_ptr->card_count == 2) ? "2. Double\n" : "");
-                        printf("%s", (can_split) ? "3. Split\n" : "");
-                        printf("\n============================================\n");
-                        
-                        printf("Enter your choice: ");
-                        decision = get_input();
-                        if (can_split) {
-                            if (decision != INPUT_ERROR && decision >= 0 && decision <= 4) {
-                                break;
-                            }
-                        }
-                        else if (player_hand_ptr->card_count == 2) {
-                            if (decision != INPUT_ERROR && decision >= 0 && decision <= 3) {
-                                break;
-                            }
-                        }
-                        else {
-                            if (decision != INPUT_ERROR && decision >= 0 && decision <= 2) {
-                                break;
-                            }
-                        }
-                        
-                    }
-                    
-                    // Print evaluations if they are enabled
-                    if (g_settings.show_eval == true) {
-                        switch (evaluate_decision(player_hand_ptr, dealer.hand.cards[1]->number, decision)) {
-                            case OPTIMAL:
-                                printf("OPTIMAL\n");
-                                break;
-                            case GOOD:
-                                printf("GOOD\n");
-                                break;
-                            case DECENT:
-                                printf("DECENT\n");
-                                break;
-                            case BAD:
-                                printf("BAD\n");
-                                break;
-                            case AWFUL:
-                                printf("AWFUL\n");
-                        }
-                    }
-                    
-                    // Handle player's decision
-                    switch (decision) {
-                        case SPLIT:
-                            split_hand(player_hand_ptr, false);
-                            is_split = true;
-                            break;
-                        case DOUBLE:
-                            player_hand_ptr->is_double = true;
-                            add_to_hand(player_hand_ptr, draw_card());
-                        case STAND:
-                            player_hand_ptr = player_hand_ptr->next;
-                            counter++;
-                            break;
-                        case HIT:
-                            add_to_hand(player_hand_ptr, draw_card());
-                            break;
-                    }
-                    
-                }
-                
-                hit_dealer(&dealer);
-                
-                short cont = 0;
-                while (true) {
-                    
-                    printf("============================================\n\n");
-                    printf("Dealer's hand:%s", (is_split) ? "     " : " ");
-                    print_hand(&(dealer.hand), false);
-                    printf("\n");
-                    print_player_hands(player, is_split, 0);
-                    printf("\n");
-                    evaluate_winnings(player, &dealer.hand, true);
-                    printf("\n============================================\n");
-                    printf("Enter 1 to continue or 0 to quit: ");
-                    cont = get_input();
-                    if (cont == INPUT_ERROR || cont < 0 || cont > 1) {
-                        continue;
-                    }
-                    break;
-                    
-                }
-                
-                // Reset dealer and players
-                reset_dealer(&dealer);
-                free_players(player, true);
-                if (!cont) {
-                    printf("Your total winnings were %d.\n", player->winnings);
-                    // Fully deallocate player memory
-                    free_players(player, false);
-                    break;
-                }
+        // Adjust bet if intensity requirement is met
+        else if (player_ptr->win_streak >= player_ptr->bet.intensity) {
+            if (player_ptr->bet.algorithm == LINEAR) {
+                player_ptr->bet.multiplier += player_ptr->bet.ratio;
             }
-            
+            else if (player_ptr->bet.algorithm == EXPONENTIAL) {
+                player_ptr->bet.multiplier *= (player_ptr->bet.ratio + 1);
+            }
+            player_ptr->win_streak = 0;
+        }
+        player_ptr = player_ptr->next;
+    }
+    
+} // adjust_bet() //
+
+// calc_avdev()
+//
+// This method is for testing purposes only and returns the
+// average deviation of the cards in the deck. For example,
+// a 2 card which is where the 9s were generated would have
+// a deviation of 7. This metric helps understand how
+// shuffled the deck is.
+
+float calc_avdev(void) {
+    
+    float deviation = 0;
+    for (int i = 0; i < g_card_count; i++) {
+        short rank_chunk = i / (g_settings.deck_size * 4) + 2;
+        short card_rank = atoi(g_deck[i]->rank);
+        if (strcmp(g_deck[i]->rank, "J") == 0) {
+            card_rank = 11;
+        } else if (strcmp(g_deck[i]->rank, "Q") == 0) {
+            card_rank = 12;
+        } else if (strcmp(g_deck[i]->rank, "K") == 0) {
+            card_rank = 13;
+        } else if (strcmp(g_deck[i]->rank, "A") == 0) {
+            card_rank = 14;
         }
         
-        else if (action == SIMULATE) {
-            
-            short player_count = 0;
-            player * player_list = NULL;
-            player * player_ptr = player_list;
-            
-            while (true) {
-                
-                printf("================> Simulate <================\n\n");
-                printf("1. Create players with default configurations\n");
-                printf("2. Load configured players from a .csv file\n");
-                printf("0. Go back\n");
-                printf("\nNote: you cannot have more than %d players.\n", MAX_PLAYER);
-                printf("\n============================================\n");
-                action = (short) get_input();
-                if (action == 0) {
-                    // Must use goto because there is no loop to break from
-                    goto Master;
-                }
-                if (action == INPUT_ERROR || action < 1 || action > 2) {
-                    continue;
-                }
-                break;
-                
-            }
-            
-            printf("============================================\n");
-            if (action == EXIT) {
-                goto Master;
-            }
-            else if (action == 1) {
-                
-                short created_players = 0;
-                while (true) {
-                    
-                    printf("Enter the number of players to simulate: ");
-                    player_count = (short) get_input();
-                    if (player_count == INPUT_ERROR || player_count < 0) {
-                        continue;
-                    } else if (player_count > MAX_PLAYER) {
-                        printf("You cannot simulate more than %d players.\n", MAX_PLAYER);
-                        continue;
-                    }
-                    break;
-                    
-                }
-                
-                if (player_count == 0) {
-                    continue;
-                }
-                
-                created_players = create_players(player_count, &player_list);
-                if (created_players > 0) {
-                    printf("Created %hd player%s successfully.\n", created_players, (created_players == 1) ? "" : "s");
-                    player_count = created_players;
-                } else {
-                    printf("Could not create players.\n");
-                    continue;
-                }
-                
-            }
-            
-            else if (action == 2) {
-                
-                while (true) {
-                    
-                    char file_name[MAX_FILE_LEN] = { 0 };
-                    printf("Enter a file name: ");
-                    scanf("%99s", file_name);
-                    
-                    short read_players = load_players(file_name, &player_list);
-                    if (read_players == FILE_ERROR) {
-                        
-                        printf("The file is not accessible or does not exist.\n");
-                        printf("============================================\n");
-                        printf("Enter 1 to try again or 0 to exit: ");
-                        
-                        while (true) {
-                            action = (short) get_input();
-                            if (action == INPUT_ERROR || action < 0 || action > 1) {
-                                continue;
-                            }
-                            break;
-                        }
-                        
-                        if (action == 0) {
-                            goto Master;
-                        } else {
-                            continue;
-                        }
-                        
-                    } else if (read_players == 0) {
-                        printf("There were no players to read in.\n");
-                        goto Master;
-                    } else {
-                        printf("Loaded %hd player%s successfully.\n", read_players, (read_players == 1) ? "" : "s");
-                        player_count = read_players;
-                        break;
-                    }
-                    
-                }
-                
-            }
+        deviation += ABS(rank_chunk - card_rank);
+    }
+    return (deviation / g_card_count);
+    
+} // calc_avdev() //
 
-            while (true) {
-                
-                printf("================> Simulate <================\n\n");
-                printf("1. Begin simulation\n");
-                printf("2. Edit player configurations\n");
-                printf("3. Save players to a .csv file\n");
-                printf("0. Exit simulation\n");
-                printf("\n============================================\n");
-                
-                action = (short) get_input();
-                if (action == FILE_ERROR || action < 0 || action > 3) {
-                    continue;
-                }
-                
-                if (action == EXIT) {
-                    goto Master;
-                } else if (action == 1) {
-                    break;
-                } else if (action == 2) {
-                    
-                    while (true) {
-                        
-                        short player_choice = 0;
-                        player_ptr = player_list;
-                        
-                        while (true) {
-                            
-                            printf("==================> Edit <==================\n\n");
-                            for (int i = 1; i <= player_count; i++) {
-                                printf("%d. %s: ", i, player_ptr->id);
-                                switch (player_ptr->bet.algorithm) {
-                                    case CONSTANT:
-                                        printf("Constant");
-                                        break;
-                                    case LINEAR:
-                                        printf("Linear");
-                                        break;
-                                    case EXPONENTIAL:
-                                        printf("Exponential");
-                                }
-                                printf("|%.2f|%hd|%hd\n", player_ptr->bet.ratio, player_ptr->bet.amount, player_ptr->bet.intensity);
-                                player_ptr = player_ptr->next;
-                            }
-                            printf("0. Go back\n");
-                            printf("\n============================================\n");
-                            
-                            player_choice = (short) get_input();
-                            if (player_choice == INPUT_ERROR || player_choice < 0 || player_choice > player_count) {
-                                continue;
-                            }
-                            break;
-                            
-                        }
-                        
-                        if (player_choice == 0) {
-                            break;
-                        } else {
-                            
-                            // Iterate to select player
-                            player_ptr = player_list;
-                            for (int i = 1; i < player_choice; i++) {
-                                player_ptr = player_ptr->next;
-                            }
-                            while (true) {
-                                printf("==================> Edit <==================\n\n");
-                                printf("1. ID : %s\n", player_ptr->id);
-                                printf("2. Betting algorithm: ");
-                                switch (player_ptr->bet.algorithm) {
-                                    case CONSTANT:
-                                        printf("Constant\n");
-                                        break;
-                                    case LINEAR:
-                                        printf("Linear\n");
-                                        break;
-                                    case EXPONENTIAL:
-                                        printf("Exponential\n");
-                                }
-                                printf("3. Betting ratio: %.2f\n", player_ptr->bet.ratio);
-                                printf("4. Betting amount: %hd\n", player_ptr->bet.amount);
-                                printf("5. Betting intensity: %hd\n", player_ptr->bet.intensity);
-                                printf("0. Go back\n");
-                                printf("\n============================================\n");
-                                
-                                while (true) {
-                                    action = get_input();
-                                    if (action == INPUT_ERROR || action < 0 || action > CHANGE_INTENSITY) {
-                                        continue;
-                                    }
-                                    break;
-                                }
-                                
-                                if (action == CHANGE_ID) {
-                                    
-                                    char new_id[MAX_ID_LEN] = { 0 };
-                                    
-                                    printf("===================> ID <===================\n\n");
-                                    printf("The ID is the name of the player that is\n");
-                                    printf("printed when results are shown.\n");
-                                    printf("Max 20 characters.\n");
-                                    printf("\n============================================\n");
-                                    printf("Enter a new ID: ");
-                                    
-                                    while (true) {
-                                        if (scanf("%20s", new_id) != 1) {
-                                            continue;
-                                        }
-                                        break;
-                                    }
-                                    
-                                    strcpy(player_ptr->id, new_id);
-                                    printf("This player's ID is now %s.\n", player_ptr->id);
-                                    
-                                } else if (action == CHANGE_ALGORITHM) {
-                                    
-                                    enum algorithm new_alg = 0;
-                                    
-                                    printf("===============> Algorithm <================\n\n");
-                                    printf("The algorithm is the shape at which a\n");
-                                    printf("player's bet is incremented. The bet will\n");
-                                    printf("not be increased if ratio = 0.\n\n");
-                                    printf("1. Constant\n");
-                                    printf("2. Linear\n");
-                                    printf("3. Exponential\n");
-                                    printf("\n============================================\n");
-                                    
-                                    while (true) {
-                                        printf("Enter a new algorithm: ");
-                                        new_alg = get_input();
-                                        if (new_alg == INPUT_ERROR || new_alg < CONSTANT || new_alg > EXPONENTIAL) {
-                                            continue;
-                                        }
-                                        break;
-                                    }
-                                    
-                                    player_ptr->bet.algorithm = new_alg;
-                                    printf("%s's betting algorithm is now\n", player_ptr->id);
-                                    switch (player_ptr->bet.algorithm) {
-                                        case CONSTANT:
-                                            printf("constant.\n");
-                                            break;
-                                        case LINEAR:
-                                            printf("linear.\n");
-                                            break;
-                                        case EXPONENTIAL:
-                                            printf("exponential.\n");
-                                    }
-                                    
-                                } else if (action == CHANGE_RATIO) {
-                                    
-                                    float new_ratio = 0;
-                                    
-                                    printf("==================> Ratio <=================\n\n");
-                                    printf("The ratio is the percentage that affects how\n");
-                                    printf("much a player's bet is incremented. A ratio\n");
-                                    printf("of 0.5 would increment a bet by half of the\n");
-                                    printf("original or multiply it by 1.5 every time.\n");
-                                    printf("The limit is a ratio of 10.\n");
-                                    printf("\n============================================\n");
-                                    
-                                    while (true) {
-                                        printf("Enter a new ratio: ");
-                                        new_ratio = get_input();
-                                        if (new_ratio == INPUT_ERROR || new_ratio < 0 || new_ratio > MAX_RATIO) {
-                                            continue;
-                                        }
-                                        break;
-                                    }
-                                    
-                                    player_ptr->bet.ratio = new_ratio;
-                                    printf("%s's betting ratio is now %f.\n", player_ptr->id, player_ptr->bet.ratio);
-                                    
-                                } else if (action == CHANGE_BET) {
-                                    
-                                    float new_amount = 0;
-                                    
-                                    printf("=================> Amount <=================\n\n");
-                                    printf("The betting amount is the base amount that a\n");
-                                    printf("player bets in a round, and is incremented\n");
-                                    printf("according to the betting algorithm and ratio.\n");
-                                    printf("The limit is %d.\n", MAX_BET);
-                                    printf("\n============================================\n");
-                                    
-                                    while (true) {
-                                        printf("Enter a new betting amount: ");
-                                        new_amount = (short) get_input();
-                                        if (new_amount == INPUT_ERROR || new_amount < 0 || new_amount > MAX_BET) {
-                                            continue;
-                                        }
-                                        break;
-                                    }
-                                    
-                                    player_ptr->bet.amount = new_amount;
-                                    printf("%s's betting amount is now %hd.\n", player_ptr->id, player_ptr->bet.amount);
-                                    
-                                } else if (action == CHANGE_INTENSITY) {
-                                    
-                                    float new_intensity = 0;
-                                    
-                                    printf("================> Intensity <===============\n\n");
-                                    printf("The betting intensity is how many rounds it\n");
-                                    printf("takes for the player to increase their bet.\n");
-                                    printf("A lower intensity is more aggessive.\n");
-                                    printf("\n============================================\n");
-                                    
-                                    while (true) {
-                                        printf("Enter a new betting intensity: ");
-                                        new_intensity = (short) get_input();
-                                        if (new_intensity == INPUT_ERROR || new_intensity < 0 || new_intensity > SHRT_MAX) {
-                                            continue;
-                                        }
-                                        break;
-                                    }
-                                    
-                                    player_ptr->bet.intensity = new_intensity;
-                                    printf("%s's betting intensity is now %hd.\n", player_ptr->id, player_ptr->bet.intensity);
-                                    
-                                } else {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                } else if (action == 3) {
-                    
-                    char file_path[MAX_FILE_LEN] = { 0 };
-                    printf("Enter a file path: ");
-                    scanf("%99s", file_path);
-                    
-                    short written_players = write_players(file_path, player_list);
-                    if (written_players == FILE_ERROR) {
-                        
-                        printf("The file is not accessible or does not exist.\n");
-                        printf("Enter 1 to try again or 0 to exit: ");
-                        
-                        while (true) {
-                            action = (short) get_input();
-                            if (action == INPUT_ERROR || action < 0 || action > 1) {
-                                continue;
-                            }
-                            break;
-                        }
-                        
-                        if (action == 0) {
-                            goto Master;
-                        }
-                        else {
-                            continue;
-                        }
-                        
-                    } else if (written_players == 0) {
-                        printf("There were no players to write.\n");
-                        continue;
-                    } else {
-                        printf("Wrote %hd player%s successfully.\n", written_players, (player_count == 1) ? "" : "s");
-                        player_count = written_players;
-                    }
-                }
-                
-            }
-            
-            printf("================> Simulate <================\n");
-            
-            int iterations = 0;
-            while (true) {
-                printf("Enter times to simulate: ");
-                iterations = (int) get_input();
-                if (iterations == INPUT_ERROR || iterations < 0 || iterations > INT_MAX) {
-                    continue;
-                }
-                break;
-            }
-            
-            // Begin simulation
-            shuffle_deck();
-            dealer dealer = { 0 };
-            for (int i = 0; i < iterations; i++) {
-                
-                if (g_settings.print_hands) printf("============================================\n\n");
-                player_ptr = player_list;
-                
-                // Check if deck needs to be shuffled
-                float deck_percent = g_deck_index / (float) g_card_count;
-                if (deck_percent * 100 > g_settings.shuffle_percent) {
-                    shuffle_deck();
-                }
-                
-                deal(player_list, &dealer);
-                
-                // Check if dealer and players have blackjack
-                dealer.hand.is_bj = (dealer.hand.hand_total == 21);
-                while (player_ptr != NULL) {
-                    player_ptr->hands->is_bj = (player_ptr->hands->hand_total == 21);
-                    player_ptr = player_ptr->next;
-                }
-                
-                // Hit players only if dealer does not have blackjack
-                if (!dealer.hand.is_bj) {
-                    
-                    hit_players(player_list, dealer.hand.cards[1]->number);
-                    hit_dealer(&dealer);
-                    if (g_settings.print_hands) {
-                        printf("Dealer's hand: ");
-                        print_hand(&dealer.hand, false);
-                        printf("\n");
-                        player_ptr = player_list;
-                        while (player_ptr != NULL) {
-                            print_player_hands(player_ptr, false, 0);
-                            player_ptr = player_ptr->next;
-                        }
-                        printf("\n");
-                    }
-                    
-                }
-                
-                evaluate_winnings(player_list, &dealer.hand, g_settings.print_hands);
-                adjust_bet(player_list);
-                if (g_settings.print_hands) printf("\n");
-                // Reset dealer and players
-                reset_dealer(&dealer);
-                free_players(player_list, true);
-                
-            }
-            
-            printf("================> Winnings <================\n");
-            player_ptr = player_list;
-            while (player_ptr != NULL) {
-                printf("%s: %d\n", player_ptr->id, player_ptr->winnings);
-                player_ptr = player_ptr->next;
-            }
-            
-            // Deallocate all player memory
-            free_players(player_list, false);
-            
-        } else if (action == CONFIGURE) {
-            
-            action = 0;
-            while (true) {
-                
-                while (true) {
-                    
-                    printf("============================================\n\n");
-                    printf("1. Deck Size: %hi\n", g_settings.deck_size);
-                    printf("2. Shuffle Passes: %hi\n", g_settings.shuffle_passes);
-                    printf("3. Shuffle Percent: %hi\n", g_settings.shuffle_percent);
-                    printf("4. Dealer hits a soft 17: %s\n", (g_settings.soft_rule) ? "True" : "False");
-                    printf("5. Insurance (not implemented): %s\n", (g_settings.insurance_rule) ? "Enabled" : "Disabled");
-                    printf("6. Evaluations: %s\n", (g_settings.show_eval) ? "Enabled" : "Disabled");
-                    printf("7. Hand Logging: %s\n", (g_settings.print_hands) ? "Enabled" : "Disabled");
-                    printf("0. Go back\n");
-                    printf("\n============================================\n");
-                    
-                    action = get_input();
-                    if (action != INPUT_ERROR && action >= 0 && action <= CHANGE_PRINT) {
-                        break;
-                    }
-                    
-                }
-                
-                if (action == CHANGE_DECK) {
-                    
-                    short new_size = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("The size of the deck will be 52 x deck size.\n");
-                    printf("Enter the new deck size below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter a positive integer: ");
-                        new_size = (short) get_input();
-                        if (new_size == INPUT_ERROR || new_size < 0) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.deck_size = new_size;
-                    change_settings("settings.bin");
-                    printf("Deck Size has been updated to %hi\n", g_settings.deck_size);
-                    
-                    // Free and reconstruct the deck
-                    free(g_deck);
-                    generate_deck();
-                    
-                } else if (action == CHANGE_PASSES) {
-                    
-                    short new_passes = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("Passes determines how many times the\n");
-                    printf("shuffling algorithm executes.\n");
-                    printf("Enter the new number of passes below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter a positive integer: ");
-                        new_passes = (short) get_input();
-                        if (new_passes == INPUT_ERROR || new_passes < 0) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.shuffle_passes = new_passes;
-                    change_settings("settings.bin");
-                    printf("Shuffle Passes has been updated to %hi\n", g_settings.shuffle_passes);
-                    
-                } else if (action == CHANGE_PERCENT) {
-                    
-                    short new_percent = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("Percent is the percent of the deck at which it must\n");
-                    printf("be shuffled. Usually, it is 50. If the deck runs\n");
-                    printf("out during a round, it will be shuffled automatically.");
-                    printf("Enter the new percentage below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter a positive integer: ");
-                        new_percent = (short) get_input();
-                        if (new_percent == INPUT_ERROR || new_percent < 0 || new_percent > 100) {
-                            continue;
-                        }
-                        break;
-                    }
-                    g_settings.shuffle_percent = new_percent;
-                    change_settings("settings.bin");
-                    printf("Shuffle Percent has been updated to %hi\n", g_settings.shuffle_percent);
-                    
-                } else if (action == CHANGE_SOFT) {
-                    
-                    short new_soft = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("A soft 17 is an Ace and a 6. Usually,\n");
-                    printf("the dealer hits this.\n");
-                    printf("Enter 1 for true or 0 for false below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter 1 or 0: ");
-                        new_soft = (short) get_input();
-                        if (new_soft == INPUT_ERROR || new_soft < 0 || new_soft > 1) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.soft_rule = (new_soft == 1);
-                    change_settings("settings.bin");
-                    printf("Hit a soft 17 has been updated to %s\n", (g_settings.soft_rule) ? "true" : "false");
-                    
-                } else if (action == CHANGE_INSURANCE) {
-                    
-                    short new_insurance = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("Change whether the dealer offers insurance.\n");
-                    printf("Enter 1 to enable or 0 to disable below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter 1 or 0: ");
-                        new_insurance = (short) get_input();
-                        if (new_insurance == INPUT_ERROR || new_insurance < 0 || new_insurance > 1) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.insurance_rule = (new_insurance == 1);
-                    change_settings("settings.bin");
-                    printf("Insurance has been %s\n", (g_settings.insurance_rule) ? "enabled" : "disabled");
-                    
-                } else if (action == CHANGE_EVAL) {
-                    
-                    short new_eval = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("Change whether evaluations are shown.\n");
-                    printf("Enter 1 to enable or 0 to disable below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter 1 or 0: ");
-                        new_eval = (short) get_input();
-                        if (new_eval == INPUT_ERROR || new_eval < 0 || new_eval > 1) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.show_eval = (new_eval == 1);
-                    change_settings("settings.bin");
-                    printf("Evaluations have been %s\n", (g_settings.show_eval) ? "enabled" : "disabled");
-                   
-                } else if (action == CHANGE_PRINT) {
-                    
-                    short new_print = 0;
-                    
-                    printf("============================================\n\n");
-                    printf("Change if hands are logged while simulating.\n");
-                    printf("Enter 1 to enable or 0 to disable below.\n");
-                    printf("\n============================================\n");
-                    
-                    while (true) {
-                        printf("Enter 1 or 0: ");
-                        new_print = (short) get_input();
-                        if (new_print == INPUT_ERROR || new_print < 0 || new_print > 1) {
-                            continue;
-                        }
-                        break;
-                    }
-                    
-                    g_settings.print_hands = (new_print == 1);
-                    change_settings("settings.bin");
-                    printf("Hand logging has been %s\n", (g_settings.print_hands) ? "enabled" : "disabled");
-                } else if (action == EXIT) {
-                    break;
-                }
-            }
-            
-        } else if (action == EXIT) {
-            printf("Goodbye.\n");
-            break;
+// change_settings()
+//
+// This method writes the current settings to the specified
+// binary file (settings.bin).
+
+void change_settings(char * file) {
+    
+    FILE *f = fopen(file, "wb");
+    if (f == NULL) {
+        printf("There was an error accessing the settings file.\n");
+        return;
+    }
+    fwrite(&g_settings, sizeof(settings), 1, f);
+    fclose(f);
+    
+} // change_settings() //
+
+// create_hand()
+//
+// This method allocates memory and returns a pointer for a
+// new player.
+
+hand * create_hand(void) {
+    
+    // Allocate memory for hand
+    hand * hand_ptr = malloc(sizeof(hand));
+    if (hand_ptr == NULL) {
+        return NULL;
+    }
+    
+    // Set hand attributes
+    hand_ptr->aces = 0;
+    hand_ptr->card_count = 0;
+    hand_ptr->cards = NULL;
+    hand_ptr->hand_total = 0;
+    hand_ptr->is_bj = false;
+    hand_ptr->is_double = false;
+    hand_ptr->next = NULL;
+    
+    return hand_ptr;
+    
+} // create_hand() //
+
+// create_player()
+//
+// This method allocates memory and returns a pointer for a
+// new player, or null if there was an issue.
+
+player * create_player(char * id, enum algorithm algorithm, float ratio, short intensity, short bet_amount) {
+    
+    // Allocate memory for player
+    player * player_ptr = malloc(sizeof(player));
+    hand * hand_ptr = create_hand();
+    player_ptr->id = malloc(strlen(id) + 1);
+    
+    // Check for memory errors
+    if ((player_ptr == NULL) || (hand_ptr == NULL) || (player_ptr->id == NULL)) {
+        return NULL;
+    }
+    
+    // Set player attributes
+    player_ptr->hands = hand_ptr;
+    player_ptr->next = NULL;
+    player_ptr->win_streak = 0;
+    player_ptr->winnings = 0;
+    strcpy(player_ptr->id, id);
+    
+    // Set player betting configuration
+    player_ptr->bet.amount = bet_amount;
+    player_ptr->bet.algorithm = algorithm;
+    player_ptr->bet.intensity = intensity;
+    player_ptr->bet.multiplier = 1;
+    player_ptr->bet.ratio = ratio;
+    
+    return player_ptr;
+    
+} // create_player() //
+
+// create_players()
+//
+// This method creates a linked-list of players, the amount of which
+// is passed in. It returns the number of players that were
+// successfully allocated in case of memory errors.
+
+short create_players(int num, player ** player_list) {
+    
+    player * prev = NULL;
+    
+    for (int i = 0; i < num; i++) {
+        
+        // Create buffer for player ID
+        char str[MAX_ID_LEN];
+        sprintf(str, "Player %d", i + 1);
+        
+        // Create a non-configured player
+        player * player_ptr = create_player(str, CONSTANT, 0, 0, 10);
+        
+        // If player is not allocated successfully
+        if (player_ptr == NULL) {
+            return i;
+        }
+        
+        // Set the head of the list to the first player or update previous player
+        if ((*player_list) == NULL) {
+            (*player_list) = player_ptr;
+        } else {
+            prev->next = player_ptr;
+        }
+        
+        prev = player_ptr;
+    }
+    
+    return num;
+    
+} // create_players() //
+
+// deal()
+//
+// This method deals cards in an orderly fashion to the dealer
+// as well as each player in the list.
+
+void deal(player * player_list, dealer * dealer_ptr) {
+    
+    for (int i = 0; i < 2; i++) {
+        
+        // Hit dealer first
+        add_to_hand(&(dealer_ptr->hand), draw_card());
+        
+        // Hit each player
+        player * player_ptr = player_list;
+        while (player_ptr != NULL) {
+            add_to_hand(player_ptr->hands, draw_card());
+            player_ptr = player_ptr->next;
         }
     }
     
-    free(g_deck);
+} // deal() //
+
+// draw_card()
+//
+// This method returns the next card in the deck and updates
+// g_deck_index.
+
+card * draw_card(void) {
+    
+    if (g_deck_index == g_card_count) {
+        shuffle_deck();
+    }
+    g_deck_index++;
+    //return &g_deck[g_deck_index - 1];
+    card * card = g_deck[g_deck_index - 1];
+    return card;
+    
+} // draw_card() //
+
+// evaluate_decision()
+//
+// This method returns an enumerated evaluation of the decision
+// passed in based on the hand's cards and the showing dealer card.
+// The evaluations do not adhere to a certain scale, but are
+// personal opinion. For this reason this method probably should
+// not be used or trusted yet.
+
+enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decision decision) {
+    
+    if (decision == make_decision(hand_ptr, dealer_card)) {
+        return OPTIMAL;
+    }
+    short total = hand_ptr->hand_total;
+    bool possible_split = ((hand_ptr->cards[0]->number == hand_ptr->cards[1]->number) && (hand_ptr->card_count == 2));
+    switch (decision) {
+        case HIT:
+            if (possible_split) {
+                short card_number = hand_ptr->cards[0]->number;
+                if (card_number == 11 || card_number == 8) {
+                    if (dealer_card <= 6) {
+                        return BAD;
+                    } else {
+                        return AWFUL;
+                    }
+                }
+                if (card_number >= 7 && card_number <= 10) {
+                    return BAD;
+                } else if (card_number == 6) {
+                    return DECENT;
+                } else {
+                    return GOOD;
+                }
+            }
+            else {
+                if (hand_ptr->aces > 0) {
+                    if (total >= 19 && total <= 20) {
+                        return AWFUL;
+                    } else if (total == 18) {
+                        if (dealer_card == 2) {
+                            return BAD;
+                        }
+                        return (dealer_card <= 6) ? DECENT : BAD;
+                    } else {
+                        return GOOD;
+                    }
+                }
+                else {
+                    if (total >= 17) {
+                        return (dealer_card >= 7) ? BAD : AWFUL;
+                    } else if (total >= 13 && total <= 16) {
+                        return BAD;
+                    } else if (total == 12) {
+                        return DECENT;
+                    } else {
+                        return GOOD;
+                    }
+                }
+            }
+            break;
+        case DOUBLE:
+            if (possible_split) {
+                short card_number = hand_ptr->cards[0]->number;
+                if (card_number == 5) {
+                    return BAD;
+                } else {
+                    return AWFUL;
+                }
+            }
+            else {
+                if (hand_ptr->aces > 0) {
+                    if (total >= 19 && total <= 20) {
+                        return AWFUL;
+                    } else if (total == 18) {
+                        if (dealer_card <= 6) {
+                            return AWFUL;
+                        } else {
+                            return BAD;
+                        }
+                    }
+                    if (dealer_card >= 7) {
+                        return BAD;
+                    } else {
+                        return DECENT;
+                    }
+                }
+                else {
+                    if (total >= 13) {
+                        return AWFUL;
+                    } else if (total == 12) {
+                        return BAD;
+                    } else if (total >= 8) {
+                        return DECENT;
+                    } else {
+                        return BAD;
+                    }
+                }
+            }
+            break;
+        case SPLIT:
+        {
+            short card_number = hand_ptr->cards[0]->number;
+            if (card_number == 10) {
+                return AWFUL;
+            } else {
+                return BAD;
+            }
+        }
+            break;
+        case STAND:
+            if (possible_split) {
+                short card_number = hand_ptr->cards[0]->number;
+                if (card_number == 11 || card_number == 8) {
+                    if (dealer_card <= 6) {
+                        return BAD;
+                    } else {
+                        return AWFUL;
+                    }
+                }
+                if (card_number == 9) {
+                    return GOOD;
+                } else if (card_number == 7 || card_number == 6) {
+                    if (dealer_card >= 6) {
+                        return BAD;
+                    } else {
+                        return DECENT;
+                    }
+                } else {
+                    return AWFUL;
+                }
+            }
+            else {
+                if (hand_ptr->aces > 0) {
+                    if (total == 18) {
+                        return DECENT;
+                    } else {
+                        if (dealer_card <= 6) {
+                            return AWFUL;
+                        } else {
+                            return BAD;
+                        }
+                    }
+                }
+                else {
+                    if (total >= 13) {
+                        return BAD;
+                    } else if (total == 12) {
+                        if (dealer_card <= 3) {
+                            return BAD;
+                        }
+                        return AWFUL;
+                    } else {
+                        return AWFUL;
+                    }
+                }
+            }
+    }
     return 0;
     
-}
+} // evaluate_decision() //
+
+// evaluate_winnings()
+//
+// This method evaluates the outcome of each player's hands and pays out
+// accordingly. Winstreaks are also updated.
+
+void evaluate_winnings(player * player_list, hand * dealer_hand, bool print) {
+    
+    player * player_ptr = player_list;
+    
+    while (player_ptr != NULL) {
+        hand * hand_ptr = player_ptr->hands;
+        
+        while (hand_ptr != NULL) {
+            if (print) printf("%s: ", player_ptr->id);
+
+            short winnings = player_ptr->bet.amount * player_ptr->bet.multiplier;
+            enum outcome outcome = 0;
+            winnings *= (hand_ptr->is_bj) ? 1.5 : 1;
+            winnings *= (hand_ptr->is_double) ? 2 : 1;
+            
+            // Evaluate the outcome of each hand
+            if (hand_ptr->hand_total > 21) {
+                outcome = LOSE;
+            } else if (hand_ptr->hand_total == dealer_hand->hand_total) {
+                if (dealer_hand->is_bj) {
+                    outcome = PUSH;
+                } else if (hand_ptr->is_bj) {
+                    outcome = WIN;
+                } else {
+                    outcome = PUSH;
+                }
+            } else if ((dealer_hand->hand_total > 21) || (hand_ptr->hand_total > dealer_hand->hand_total)) {
+                outcome = WIN;
+            } else {
+                outcome = LOSE;
+            }
+            
+            // Update player winnings and win streaks;
+            switch (outcome) {
+                case LOSE:
+                    if (print) printf("Lose %hd.\n", winnings);
+                    winnings *= -1;
+                    player_ptr->win_streak = 0;
+                    break;
+                case PUSH:
+                    if (print) printf("Push.\n");
+                    winnings = 0;
+                    player_ptr->win_streak = 0;
+                    break;
+                case WIN:
+                    if (print) printf("%sWin %hd.\n", (hand_ptr->is_bj) ? "Blackjack! " : "", winnings);
+                    player_ptr->win_streak++;
+            }
+            
+            FILE *f = fopen("File.txt", "aw");
+            
+            fprintf(f, "%s %s %hd -> %hd\n", print_hand_str(dealer_hand, false), print_hand_str(hand_ptr, false), (short) (player_ptr->bet.amount * player_ptr->bet.multiplier), winnings);
+            if (dealer_hand->cards[0]->number == 10) {
+                fprintf(f, "*\n");
+            }
+             
+            //fprintf(f, "%hd,", winnings);
+            fclose(f);
+            player_ptr->winnings += winnings;
+            hand_ptr = hand_ptr->next;
+        }
+        player_ptr = player_ptr->next;
+    }
+    
+} // evaluate_winnings() //
+
+// free_player()
+//
+// This method deallocates the memory for a player, which includes
+// freeing each hand and it's cards, the id, and the player itself.
+
+void free_players(player * player_list, bool reset) {
+    
+    player * player_ptr = player_list;
+    
+    while (player_ptr != NULL) {
+        hand * hand_ptr = player_ptr->hands;
+        
+        // Free each hand and its card array
+        while (hand_ptr != NULL) {
+            free(hand_ptr->cards);
+            hand_ptr->cards = NULL;
+            hand * temp = hand_ptr;
+            hand_ptr = hand_ptr->next;
+            free(temp);
+            temp = NULL;
+        }
+        
+        player_ptr->hands = NULL;
+        player * temp = player_ptr;
+        player_ptr = player_ptr->next;
+        
+        if (reset) {
+            // If only resetting, we need to reallocate a hand to the player
+            temp->hands = create_hand();
+            if (temp->hands == NULL) {
+                exit(MEMORY_ERROR);
+            }
+        } else {
+            // If not resetting, free all player memory
+            free(temp->id);
+            free(temp);
+            temp = NULL;
+        }
+    }
+    
+} // free_player() //
+
+// generate_deck()
+//
+// This method allocates the memory for the deck (array of cards)
+// and fills the array with cards which are not yet shuffled.
+
+void generate_deck(void) {
+    
+    g_card_count = g_settings.deck_size * 52;
+    g_deck = malloc(sizeof(card *) * g_card_count);
+    if (g_deck == NULL) {
+        exit(MEMORY_ERROR);
+    }
+    int index = 0;
+    for (int card_num = 2; card_num <= 11; card_num++) {
+        
+        // 16 10s, 4 of everything else will be generated
+        int passes = g_settings.deck_size * ((card_num == 10) ? 16 : 4);
+        for (int j = 0; j < passes; j++) {
+            
+            g_deck[index] = malloc(sizeof(card));
+            if (g_deck[index] == NULL) {
+                exit(MEMORY_ERROR);
+            }
+            
+            // Adjust card rank if there is a face card
+            if (card_num == 10) {
+                switch (j / (g_settings.deck_size * 4)) {
+                    case 0:
+                        sprintf(g_deck[index]->rank, "%d", 10);
+                        break;
+                    case 1:
+                        strcpy(g_deck[index]->rank, "J");
+                        break;
+                    case 2:
+                        strcpy(g_deck[index]->rank, "Q");
+                        break;
+                    default:
+                        strcpy(g_deck[index]->rank, "K");
+                }
+            }
+            else if (card_num == 11) {
+                strcpy(g_deck[index]->rank, "A");
+            }
+            else {
+                sprintf(g_deck[index]->rank, "%d", card_num);
+            }
+            g_deck[index]->suit = j % 4;
+            g_deck[index]->number = card_num;
+            index++;
+        }
+    }
+    
+} // generate_deck() //
+
+// get_input()
+//
+// This method takes a number input from the user and returns INPUT_ERROR
+// if there was a problem.
+
+float get_input(void) {
+    
+    float choice = 0;
+    if (scanf("%f", &choice) == 0) {
+        scanf("%*c");
+        choice = INPUT_ERROR;
+    }
+    return choice;
+    
+} // get_input() //
+
+// hit_dealer()
+//
+// This method hits the dealer until it has reached 17, and hits
+// again if there is a soft 17 and the rule is enabled in settings.
+
+void hit_dealer(dealer * dealer) {
+    
+    // Hit dealer until cards total 17 or more
+    while (dealer->hand.hand_total < 17) {
+        add_to_hand(&(dealer->hand), draw_card());
+    }
+    
+    // Hit soft 17 if it is enabled
+    if (g_settings.soft_rule) {
+        while ((dealer->hand.hand_total == 17) && (dealer->hand.aces > 0)) {
+            add_to_hand(&dealer->hand, draw_card());
+        }
+    }
+    
+} // hit_dealer() //
+
+// hit_player()
+//
+// This method autonomously hits a player based on the result of the
+// make_decision() method.
+
+void hit_players(player * player_list, short dealer_card) {
+    
+    player * player_ptr = player_list;
+    while (player_ptr != NULL) {
+        
+        // Hit hand by hand
+        hand * hand_ptr = player_ptr->hands;
+        while (hand_ptr != NULL) {
+            
+            // Get decision and act accordingly
+            enum decision decision = make_decision(hand_ptr, dealer_card);
+            while (decision != STAND) {
+                if (decision == SPLIT) {
+                    split_hand(hand_ptr, true);
+                } else {
+                    
+                    // Double if necessary then hit regardless
+                    if (decision == DOUBLE && (hand_ptr->card_count == 2)) {
+                        hand_ptr->is_double = true;
+                    }
+                    add_to_hand(hand_ptr, draw_card());
+                }
+                if (hand_ptr->is_double) {
+                    break;
+                }
+                decision = make_decision(hand_ptr, dealer_card);
+            }
+            hand_ptr = hand_ptr->next;
+        }
+        player_ptr = player_ptr->next;
+    }
+    
+} // hit_player() //
+
+// load_players()
+//
+// This method reads the specified file path and creates a list of
+// players from it. If there is an error, the method will return
+// how many players were read successfully. A file error will return
+// FILE_ERROR to be handled. This method will successfully read
+// players both with a specified ID and without.
+
+short load_players(char * file_name, player ** player_head) {
+    
+    // Open file and handle an error
+    FILE *f = fopen(file_name, "r");
+    if (f == NULL) {
+        return FILE_ERROR;
+    }
+    
+    short player_counter = 0;
+    player * prev_player = NULL;
+    
+    // Read player strings line by line
+    while (!feof(f)) {
+        
+        // Buffer variable declarations
+        char id[MAX_ID_LEN] = { 0 };
+        char algorithm = 0;
+        float ratio = 0.0;
+        short bet_amount = 0;
+        short intensity = 0;
+        long position = ftell(f);
+        
+        // Check if there is a specified ID string
+        int read_values = fscanf(f, "%19[^,],%c,%f,%hd,%hd\n", id, &algorithm, &ratio, &bet_amount, &intensity);
+        if (read_values != 5) {
+            fseek(f, position, SEEK_SET);
+            read_values = fscanf(f, "%c,%f,%hd,%hd\n", &algorithm, &ratio, &bet_amount, &intensity);
+            
+            // Stop reading if there is a problem with a player string
+            if (read_values != 4) {
+                continue;
+            }
+            sprintf(id, "Player %d", player_counter + 1);
+        }
+        
+        // Create new player and convert char to enum
+        player * new_player_ptr;
+        if (algorithm == 'C') {
+            new_player_ptr = create_player(id, CONSTANT, ratio, intensity, bet_amount);
+        } else if (algorithm == 'L') {
+            new_player_ptr = create_player(id, LINEAR, ratio, intensity, bet_amount);
+        } else if (algorithm == 'E') {
+            new_player_ptr = create_player(id, EXPONENTIAL, ratio, intensity, bet_amount);
+        } else {
+            continue;
+        }
+        
+        // Set head or fill next attribute
+        if (prev_player == NULL) {
+            (*player_head) = new_player_ptr;
+        }
+        else {
+            prev_player->next = new_player_ptr;
+        }
+        prev_player = new_player_ptr;
+        player_counter++;
+        if (player_counter == MAX_PLAYER) {
+            break;
+        }
+        
+    }
+    fclose(f);
+    return player_counter;
+    
+} // load_players() //
+
+// load_settings()
+//
+// This method reads the specified file (settings.bin) and populates
+// g_settings.
+
+void load_settings(char * file) {
+
+    FILE *f = fopen(file, "rb");
+    if (f == NULL) {
+        printf("There was an error accessing the settings file.\n");
+        return;
+    }
+    fread(&g_settings, sizeof(settings), 1, f);
+    fclose(f);
+    
+} // load_settings() //
+
+// make_decision()
+//
+// This method returns an enumerated decision based on the hand's
+// cards and the dealer's showing card. The by-case decisions are
+// found in the decision matrices.
+
+enum decision make_decision(hand * hand, short dealer_card) {
+    
+    char decision = 0;
+
+    // Check if the hand has the same two cards for split
+    if ((hand->cards[0]->number == hand->cards[1]->number) && (hand->card_count == 2)) {
+        decision = split_decision_matrix[hand->cards[0]->number - 2][dealer_card - 2];
+    }
+    
+    // Check if the hand contains an ace
+    else if (hand->aces > 0) {
+        
+        short not_ace = hand->hand_total - 11;
+        if (not_ace >= 8) {
+            return STAND;
+        }
+        decision = ace_decision_matrix[not_ace - 2][dealer_card - 2];
+        
+    }
+    
+    else {
+        
+        if (hand->hand_total >= 17) {
+            return STAND;
+        } else if (hand->hand_total <= 8) {
+            return HIT;
+        }
+        decision = reg_decision_matrix[hand->hand_total - 9][dealer_card - 2];
+        
+    }
+    
+    // Convert decision character to enumerated decision
+    switch (decision) {
+        case 'h':
+            return HIT;
+        case 'd':
+            return DOUBLE;
+        case 'x':
+            return SPLIT;
+        default:
+            return STAND;
+    }
+    
+} // make_decision() //
+
+// print_deck()
+//
+// This method is used for debugging purposes and prints out the
+// deck in an easy-to-read fashion.
+
+void print_deck(void) {
+    
+    printf("|");
+    for (int i = 0; i < g_card_count; i++) {
+        printf("%s|", g_deck[i]->rank);
+    }
+    printf("\n");
+    
+} // print_deck() //
+
+// print_hands()
+//
+// This method prints out each hand that is in the specified list
+// of hands. The 'hide' parameter is used to hide the first card of
+// the hand for the dealer.
+
+void print_hand(hand * hand_head, bool hide) {
+    
+    bool first_card = true;
+    hand * hand_ptr = hand_head;
+    
+    printf("|");
+        
+    for (int i = 0; i < hand_ptr->card_count; i++) {
+        if (first_card && hide) {
+            printf("?");
+            first_card = false;
+        } else {
+            printf("%s", hand_ptr->cards[i]->rank);
+        }
+        printf("|");
+    }
+        
+    if (!hide) {
+        printf(" (%hd) ", hand_ptr->hand_total);
+    }
+        
+} // print_hand() //
+
+// print_hand_str()
+//
+// This method is an alternate version of print_hand() that
+// returns a string of formatted hands to print. It is currently
+// not in use and causes memory leaks if not dealt with
+// properly.
+
+char * print_hand_str(hand * hand_head, bool hide) {
+    
+    char * result_str = malloc(200);
+    bool first_card = true;
+    hand * hand_ptr = hand_head;
+    while (hand_ptr != NULL) {
+        strcat(result_str, "|");
+        
+        for (int i = 0; i < hand_ptr->card_count; i++) {
+            if (first_card && hide) {
+                strcat(result_str, "?");
+                first_card = false;
+            } else {
+                strcat(result_str, hand_ptr->cards[i]->rank);
+            }
+            strcat(result_str, "|");
+        }
+        
+        if (!hide) {
+            char total_str[7];
+            sprintf(total_str, " (%hd) ", hand_ptr->hand_total);
+            strcat(result_str, total_str);
+        }
+        hand_ptr = hand_ptr->next;
+        if (hand_ptr != NULL) {
+            strcat(result_str, "\n");
+        }
+    }
+    return result_str;
+    
+} // print_hand_str() //
+
+// print_player_hands()
+//
+// This method prints out player hands with an indicator as
+// to which will be acted upon in case of a split.
+
+void print_player_hands(player * player_ptr, bool is_split, short counter) {
+    
+    short hand_counter = 1;
+    hand * hand_ptr = player_ptr->hands;
+    while (hand_ptr != NULL) {
+        
+        printf("%s hand", player_ptr->id);
+        
+        if (is_split) {
+            printf(" (%hd): ", hand_counter);
+        }
+        else {
+            printf(": ");
+        }
+        
+        print_hand(hand_ptr, false);
+        
+        // Add hand indicator
+        if ((hand_counter == counter) && is_split) {
+            printf(" <");
+        }
+        printf("\n");
+        hand_ptr = hand_ptr->next;
+        hand_counter++;
+    }
+    
+} // print_player_hands() //
+
+// reset_dealer()
+//
+// This method deallocates the memory for the dealer, which includes
+// freeing the dealer's array of cards. Dealers are not allocated
+// dynamically so we need not free a dealer struct.
+
+void reset_dealer(dealer * dealer) {
+    
+    hand * hand_ptr = &dealer->hand;
+    free(hand_ptr->cards);
+    hand_ptr->cards = NULL;
+    
+    // Reset dealer values
+    dealer->hand.aces = 0;
+    dealer->hand.card_count = 0;
+    dealer->hand.is_bj = false;
+    dealer->hand.hand_total = 0;
+    
+} // reset_dealer() //
+
+// split_hand()
+//
+// This method splits a hand into two different hands by creating
+// another linked node in the specified list of hands. The 'recurse'
+// parameter is used to recursively split hands until a
+// differently-numbered card is drawn. This method can successfully
+// run until a stack-overflow, theoretically splitting hands indefinitely.
+
+void split_hand(hand * hand_ptr, bool recurse) {
+    
+    // Create new hand
+    hand * new_hand_ptr = create_hand();
+    if (new_hand_ptr == NULL) {
+        exit(MEMORY_ERROR);
+    }
+    add_to_hand(new_hand_ptr, hand_ptr->cards[1]);
+    new_hand_ptr->next = hand_ptr->next;
+    
+    // Modify aces variable for each hand: 2 -> 1, 0 -> 0
+    hand_ptr->aces /= 2;
+    new_hand_ptr->aces = hand_ptr->aces / 2;
+    
+    // Update and hit the original hand. Since we are replacing the second card,
+    // we must manually change the pointer instead of using add_to_hand().
+    card * new_card = draw_card();
+    hand_ptr->cards[1] = new_card;
+    hand_ptr->hand_total = hand_ptr->cards[0]->number + new_card->number;
+    if (new_card->number == 11) {
+        hand_ptr->aces++;
+    }
+    hand_ptr->next = new_hand_ptr;
+    
+    // Check for another split and recurse if specified
+    if (new_card->number == hand_ptr->cards[0]->number && recurse) {
+        split_hand(hand_ptr, true);
+    }
+    
+    // Draw a card to the new hand
+    new_card = draw_card();
+    add_to_hand(new_hand_ptr, new_card);
+    
+    // Check for another split for new hand
+    if (new_card->number == hand_ptr->cards[0]->number && recurse) {
+        split_hand(new_hand_ptr, true);
+    }
+    
+} // split_hand() //
+
+// shuffle_deck()
+//
+// This method shuffles the deck by iterating over it and swapping
+// each card with a randomly-selected card. It will do this a number
+// of times according to the 'shuffle_passes' setting.
+
+void shuffle_deck(void) {
+    
+    // Offset variable ensures that the seed changes regardless of how
+    // fast time() is called.
+    static unsigned int offset = 0;
+    srand((unsigned int) time(NULL) + offset);
+    offset++;
+    
+    for (int i = 0; i < g_settings.shuffle_passes; i++) {
+        for (int j = 0; j < g_card_count; j++) {
+            int rand_index = rand() % g_card_count;
+            
+            // Swap cards
+            card * temp = g_deck[rand_index];
+            g_deck[rand_index] = g_deck[j];
+            g_deck[j] = temp;
+        }
+    }
+    
+    g_deck_index = 0;
+    
+} // shuffle_deck() //
+
+// write_players()
+//
+// This method writes player configurations to a specified
+// file, and returns the number of players that were
+// successfully written to the file.
+
+short write_players(char * file_path, player * player_list) {
+    
+    FILE *f = fopen(file_path, "w");
+    if (f == NULL) {
+        return FILE_ERROR;
+    }
+    
+    short player_counter = 0;
+    while (player_list != NULL) {
+        
+        // Convert enumerated algorithm to char
+        char algorithm = 0;
+        switch (player_list->bet.algorithm) {
+            case CONSTANT:
+                algorithm = 'C';
+                break;
+            case LINEAR:
+                algorithm = 'L';
+                break;
+            case EXPONENTIAL:
+                algorithm = 'E';
+        }
+        
+        // Write to file and check for errors
+        int ret_val = fprintf(f, "%s,%c,%f,%hd,%hd\n", player_list->id, algorithm, player_list->bet.ratio, player_list->bet.amount, player_list->bet.intensity);
+        if (ret_val < 0) {
+            break;
+        }
+        
+        player_counter++;
+        player_list = player_list->next;
+    }
+    fclose(f);
+    return player_counter;
+    
+} // write_players() //
