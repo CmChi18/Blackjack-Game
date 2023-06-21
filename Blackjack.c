@@ -291,7 +291,6 @@ card * draw_card(void) {
         shuffle_deck();
     }
     g_deck_index++;
-    //return &g_deck[g_deck_index - 1];
     card * card = g_deck[g_deck_index - 1];
     return card;
     
