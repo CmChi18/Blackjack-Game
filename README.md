@@ -8,6 +8,8 @@ Practice mode allows the user to play rounds of blackjack against an autonomous 
 Simulation mode allows the user to simulate many rounds of blackjack with a high level of configurability. The amount of players, their bets and betting configurations can all be modified in runtime. Additionally, one can load and save players to or from a .csv file. If a player string is malformed in the file during loading, it is skipped over, and the remaining players are still read in. Each simulated player makes their decisions based on a standard Blackjack hitting table, which is present in a global array. It cannot be changed during runtime (yet) but can be modified in the code. The details for each betting variable can be found in their respective menus.
 ### Settings
 The program has settings that can be edited in the menu. They are loaded from and saved to `settings.bin` which must exist in the same directory as the executable.
+## Behaviors
+The program will print the same screen until a valid input is entered. It should be obvious what is valid depending on the situation.
 ## Implementation Decisions
 I wanted to make the program function as similarly as possible to an actual game of blackjack. For this reason, I chose different structures of lists for each data type. Linked lists are used a lot because one of my goals for this project was to practice their implementation and use.
 - The deck is an array of pointers to cards. Having just an array of cards was problematic for edge cases when shuffling. Memory is allocated in the `generate_deck()` method.
