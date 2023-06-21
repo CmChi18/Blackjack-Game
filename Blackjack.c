@@ -685,7 +685,7 @@ Master:
                     while (true) {
                         printf("Enter a positive integer: ");
                         new_size = (short) get_input();
-                        if (new_size == INPUT_ERROR || new_size < 0) {
+                        if (new_size == INPUT_ERROR || new_size <= 0) {
                             continue;
                         }
                         break;
