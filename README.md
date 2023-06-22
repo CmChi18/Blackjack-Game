@@ -1,5 +1,5 @@
 # Blackjack Game
-This project is meant to be a tool in learning more about blackjack and how much one might expect to win from playing it. Details on compiling and running are found at the bottom.
+This project is meant to be a tool in learning more about blackjack and how much one might expect to win from playing it. Moreover, it was meant to help me practice manual memory management in the C programming language. Details on compiling and running are found at the bottom.
 ## Functionality
 The program has 2 different purposes: practicing and simulating, both of which are configurable.
 ### Practice
@@ -13,7 +13,7 @@ The program will print the same screen until a valid input is entered. It should
 ## Implementation Decisions
 I wanted to make the program function as similarly as possible to an actual game of blackjack. For this reason, I chose different structures of lists for each data type. Linked lists are used a lot because one of my goals for this project was to practice their implementation and use.
 - The deck is an array of pointers to cards. Having just an array of cards was problematic for edge cases when shuffling. Memory is allocated in the `generate_deck()` method.
-- Each hand has an array of card pointers. Originally, new cards were actually allocated when they were drawn, which is not a very good solution. I feel that it is better to just have references to cards stored in each hand, even if the memory savings is not very much. Thus, drawing a card to a hand simply extends the array to add a new pointer. In the future, this implementation could be changed so that there is a predetermined card array size, like 3, that only extends if it needed to get rid of the overhead caused by allocating a new array and copying over values.
+- Each hand has an array of card pointers. Originally, new cards were actually allocated when they were drawn, which is not a very good solution. I feel that it is better to just have references to cards stored in each hand, even if the memory savings is not very much. Thus, drawing a card to a hand simply extends the array to add a new pointer. Each hand starts with 2 allocated cards to mitigate some of the overhead in copying cards to a new array.
 - Each player has a linked list of hands. It might seem like hands should be stored in an array, but having linked lists makes it much easier to handle splits, especially if the first hand is being split (you would have to move the next hand over or have the hands be out of order).
 - The players are stored in a linked list. The only reason for this is that when loading players from a file, the correctly-formatted players do not need to be counted first. If players were stored in an array, the file would have to be traversed over twice so that the appropriate amount of memory can be allocated.
 ## Compilation
