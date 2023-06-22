@@ -55,17 +55,26 @@ void add_to_hand(hand * hand, card * card_ptr) {
         hand->aces++;
     }
     
-    // Allocate a larger array of cards, check for memory error
-    card ** new_list = malloc(sizeof(card *) * (hand->card_count + 1));
-    if (new_list == NULL) {
-        exit(MEMORY_ERROR);
+    // Check if bigger array is needed
+    if (hand->card_count >= 2) {
+        // Allocate a larger array of cards, check for memory error
+        card ** new_list = malloc(sizeof(card *) * (hand->card_count + 1));
+        if (new_list == NULL) {
+            exit(MEMORY_ERROR);
+        }
+        
+        // Populate new array with cards
+        for (int i = 0; i < hand->card_count; i++) {
+            new_list[i] = hand->cards[i];
+        }
+        new_list[(int) hand->card_count] = card_ptr;
+        
+        // Free old array and assign to new_list
+        free(hand->cards);
+        hand->cards = new_list;
+    } else {
+        hand->cards[hand->card_count] = card_ptr;
     }
-    
-    // Populate new array with cards
-    for (int i = 0; i < hand->card_count; i++) {
-        new_list[i] = hand->cards[i];
-    }
-    new_list[(int) hand->card_count] = card_ptr;
     
     // Adjust hand_total based on aces in the hand
     hand->hand_total += card_ptr->number;
@@ -73,11 +82,7 @@ void add_to_hand(hand * hand, card * card_ptr) {
         hand->hand_total -= 10;
         hand->aces--;
     }
-
-    // Free old array and assign to new_list
-    free(hand->cards);
     hand->card_count++;
-    hand->cards = new_list;
     
 } // add_to_hand() //
 
@@ -168,18 +173,19 @@ hand * create_hand(void) {
     
     // Allocate memory for hand
     hand * hand_ptr = malloc(sizeof(hand));
-    if (hand_ptr == NULL) {
-        return NULL;
-    }
+    if (hand_ptr == NULL) return NULL;
     
     // Set hand attributes
     hand_ptr->aces = 0;
     hand_ptr->card_count = 0;
-    hand_ptr->cards = NULL;
     hand_ptr->hand_total = 0;
     hand_ptr->is_bj = false;
     hand_ptr->is_double = false;
     hand_ptr->next = NULL;
+    
+    // Each hand is guaranteed to have 2 cards
+    hand_ptr->cards = malloc(sizeof(card *) * 2);
+    if (hand_ptr->cards == NULL) return NULL;
     
     return hand_ptr;
     
@@ -959,7 +965,7 @@ void reset_dealer(dealer * dealer) {
     
     hand * hand_ptr = &dealer->hand;
     free(hand_ptr->cards);
-    hand_ptr->cards = NULL;
+    hand_ptr->cards = malloc(sizeof(card *) * 2);
     
     // Reset dealer values
     dealer->hand.aces = 0;
