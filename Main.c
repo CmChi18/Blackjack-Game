@@ -39,6 +39,7 @@ Master:
             
             shuffle_deck();
             dealer dealer = { 0 };
+            dealer.hand.cards = malloc(sizeof(card *) * 2);
             player * player = create_player("Player", 0, 0, 0, 0);
             
             while (true) {
@@ -273,7 +274,9 @@ Master:
                     
                     char file_name[MAX_FILE_LEN] = { 0 };
                     printf("Enter a file name: ");
-                    scanf("%99s", file_name);
+                    scanf("%49s", file_name);
+                    char c;
+                    while ((c = getchar()) != '\n' && c != EOF);
                     
                     short read_players = load_players(file_name, &player_list);
                     if (read_players == FILE_ERROR) {
@@ -536,12 +539,15 @@ Master:
                     
                     char file_path[MAX_FILE_LEN] = { 0 };
                     printf("Enter a file path: ");
-                    scanf("%99s", file_path);
+                    scanf("%49s", file_path);
+                    char c;
+                    while ((c = getchar()) != '\n' && c != EOF);
                     
                     short written_players = write_players(file_path, player_list);
                     if (written_players == FILE_ERROR) {
                         
-                        printf("The file is not accessible or does not exist.\n");
+                        printf("There was an error writing to the file.\n");
+                        printf("============================================\n");
                         printf("Enter 1 to try again or 0 to exit: ");
                         
                         while (true) {
@@ -585,6 +591,7 @@ Master:
             // Begin simulation
             shuffle_deck();
             dealer dealer = { 0 };
+            dealer.hand.cards = malloc(sizeof(card *) * 2);
             for (int i = 0; i < iterations; i++) {
                 
                 if (g_settings.print_hands) printf("============================================\n\n");
