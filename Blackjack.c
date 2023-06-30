@@ -10,7 +10,7 @@
 /* Constant declarations */
 
 const char reg_decision_matrix[][10] = {
-    {'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h', 'h'}, // 9
+    {'h', 'd', 'd', 'd', 'd', 'h', 'h', 'h', 'h', 'h'}, // 9
     {'d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'h', 'h'}, //10
     {'d', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'd', 'h'}, //11
     {'h', 'h', 's', 's', 's', 'h', 'h', 'h', 'h', 'h'}, //12
@@ -48,41 +48,41 @@ const char split_decision_matrix[][10] = {
 // This method adds a card to a hand's list of cards
 // while updating the hand's number of aces.
 
-void add_to_hand(hand * hand, card * card_ptr) {
+void add_to_hand(hand * h_ptr, card * card_ptr) {
     
     // Check if the card being added is an ace
     if (card_ptr->number == 11) {
-        hand->aces++;
+        h_ptr->aces++;
     }
     
     // Check if bigger array is needed
-    if (hand->card_count >= 2) {
+    if (h_ptr->card_count >= 2) {
         // Allocate a larger array of cards, check for memory error
-        card ** new_list = malloc(sizeof(card *) * (hand->card_count + 1));
+        card ** new_list = malloc(sizeof(card *) * (h_ptr->card_count + 1));
         if (new_list == NULL) {
             exit(MEMORY_ERROR);
         }
         
         // Populate new array with cards
-        for (int i = 0; i < hand->card_count; i++) {
-            new_list[i] = hand->cards[i];
+        for (int i = 0; i < h_ptr->card_count; i++) {
+            new_list[i] = h_ptr->cards[i];
         }
-        new_list[(int) hand->card_count] = card_ptr;
+        new_list[(int) h_ptr->card_count] = card_ptr;
         
         // Free old array and assign to new_list
-        free(hand->cards);
-        hand->cards = new_list;
+        free(h_ptr->cards);
+        h_ptr->cards = new_list;
     } else {
-        hand->cards[hand->card_count] = card_ptr;
+        h_ptr->cards[(int) h_ptr->card_count] = card_ptr;
     }
     
     // Adjust hand_total based on aces in the hand
-    hand->hand_total += card_ptr->number;
-    if ((hand->hand_total > 21) && (hand->aces > 0)) {
-        hand->hand_total -= 10;
-        hand->aces--;
+    h_ptr->hand_total += card_ptr->number;
+    if ((h_ptr->hand_total > 21) && (h_ptr->aces > 0)) {
+        h_ptr->hand_total -= 10;
+        h_ptr->aces--;
     }
-    hand->card_count++;
+    h_ptr->card_count++;
     
 } // add_to_hand() //
 
@@ -92,27 +92,27 @@ void add_to_hand(hand * hand, card * card_ptr) {
 // in the list by comparing the winstreak of each player
 // to their betting intensity value.
 
-void adjust_bet(player * player_list) {
+void adjust_bet(player * p_list) {
 
-    player * player_ptr = player_list;
-    while (player_ptr != NULL) {
+    player * p_ptr = p_list;
+    while (p_ptr != NULL) {
     
         // Reset multiplier if winstreak was broken
-        if (player_ptr->win_streak == 0) {
-            player_ptr->bet.multiplier = 1;
+        if (p_ptr->win_streak == 0) {
+            p_ptr->bet.multiplier = 1;
         }
         
         // Adjust bet if intensity requirement is met
-        else if (player_ptr->win_streak >= player_ptr->bet.intensity) {
-            if (player_ptr->bet.algorithm == LINEAR) {
-                player_ptr->bet.multiplier += player_ptr->bet.ratio;
+        else if (p_ptr->win_streak >= p_ptr->bet.intensity) {
+            if (p_ptr->bet.algorithm == LINEAR) {
+                p_ptr->bet.multiplier += p_ptr->bet.ratio;
             }
-            else if (player_ptr->bet.algorithm == EXPONENTIAL) {
-                player_ptr->bet.multiplier *= (player_ptr->bet.ratio + 1);
+            else if (p_ptr->bet.algorithm == EXPONENTIAL) {
+                p_ptr->bet.multiplier *= (p_ptr->bet.ratio + 1);
             }
-            player_ptr->win_streak = 0;
+            p_ptr->win_streak = 0;
         }
-        player_ptr = player_ptr->next;
+        p_ptr = p_ptr->next;
     }
     
 } // adjust_bet() //
@@ -172,22 +172,22 @@ void change_settings(char * file) {
 hand * create_hand(void) {
     
     // Allocate memory for hand
-    hand * hand_ptr = malloc(sizeof(hand));
-    if (hand_ptr == NULL) return NULL;
+    hand * h_ptr = malloc(sizeof(hand));
+    if (h_ptr == NULL) return NULL;
     
     // Set hand attributes
-    hand_ptr->aces = 0;
-    hand_ptr->card_count = 0;
-    hand_ptr->hand_total = 0;
-    hand_ptr->is_bj = false;
-    hand_ptr->is_double = false;
-    hand_ptr->next = NULL;
+    h_ptr->aces = 0;
+    h_ptr->card_count = 0;
+    h_ptr->hand_total = 0;
+    h_ptr->is_bj = false;
+    h_ptr->is_double = false;
+    h_ptr->next = NULL;
     
     // Each hand is guaranteed to have 2 cards
-    hand_ptr->cards = malloc(sizeof(card *) * 2);
-    if (hand_ptr->cards == NULL) return NULL;
+    h_ptr->cards = malloc(sizeof(card *) * 2);
+    if (h_ptr->cards == NULL) return NULL;
     
-    return hand_ptr;
+    return h_ptr;
     
 } // create_hand() //
 
@@ -199,30 +199,30 @@ hand * create_hand(void) {
 player * create_player(char * id, enum algorithm algorithm, float ratio, short intensity, short bet_amount) {
     
     // Allocate memory for player
-    player * player_ptr = malloc(sizeof(player));
-    hand * hand_ptr = create_hand();
-    player_ptr->id = malloc(strlen(id) + 1);
+    player * p_ptr = malloc(sizeof(player));
+    hand * h_ptr = create_hand();
+    p_ptr->id = malloc(strlen(id) + 1);
     
     // Check for memory errors
-    if ((player_ptr == NULL) || (hand_ptr == NULL) || (player_ptr->id == NULL)) {
+    if ((p_ptr == NULL) || (h_ptr == NULL) || (p_ptr->id == NULL)) {
         return NULL;
     }
     
     // Set player attributes
-    player_ptr->hands = hand_ptr;
-    player_ptr->next = NULL;
-    player_ptr->win_streak = 0;
-    player_ptr->winnings = 0;
-    strcpy(player_ptr->id, id);
+    p_ptr->hands = h_ptr;
+    p_ptr->next = NULL;
+    p_ptr->win_streak = 0;
+    p_ptr->winnings = 0;
+    strcpy(p_ptr->id, id);
     
     // Set player betting configuration
-    player_ptr->bet.amount = bet_amount;
-    player_ptr->bet.algorithm = algorithm;
-    player_ptr->bet.intensity = intensity;
-    player_ptr->bet.multiplier = 1;
-    player_ptr->bet.ratio = ratio;
+    p_ptr->bet.amount = bet_amount;
+    p_ptr->bet.algorithm = algorithm;
+    p_ptr->bet.intensity = intensity;
+    p_ptr->bet.multiplier = 1;
+    p_ptr->bet.ratio = ratio;
     
-    return player_ptr;
+    return p_ptr;
     
 } // create_player() //
 
@@ -232,7 +232,7 @@ player * create_player(char * id, enum algorithm algorithm, float ratio, short i
 // is passed in. It returns the number of players that were
 // successfully allocated in case of memory errors.
 
-short create_players(int num, player ** player_list) {
+short create_players(int num, player ** p_list) {
     
     player * prev = NULL;
     
@@ -243,21 +243,21 @@ short create_players(int num, player ** player_list) {
         sprintf(str, "Player %d", i + 1);
         
         // Create a non-configured player
-        player * player_ptr = create_player(str, CONSTANT, 0, 0, 10);
+        player * p_ptr = create_player(str, CONSTANT, 0, 0, 10);
         
         // If player is not allocated successfully
-        if (player_ptr == NULL) {
+        if (p_ptr == NULL) {
             return i;
         }
         
         // Set the head of the list to the first player or update previous player
-        if ((*player_list) == NULL) {
-            (*player_list) = player_ptr;
+        if ((*p_list) == NULL) {
+            (*p_list) = p_ptr;
         } else {
-            prev->next = player_ptr;
+            prev->next = p_ptr;
         }
         
-        prev = player_ptr;
+        prev = p_ptr;
     }
     
     return num;
@@ -269,18 +269,18 @@ short create_players(int num, player ** player_list) {
 // This method deals cards in an orderly fashion to the dealer
 // as well as each player in the list.
 
-void deal(player * player_list, dealer * dealer_ptr) {
+void deal(player * p_list, dealer * d_ptr) {
     
     for (int i = 0; i < 2; i++) {
         
         // Hit dealer first
-        add_to_hand(&(dealer_ptr->hand), draw_card());
+        add_to_hand(&(d_ptr->hand), draw_card());
         
         // Hit each player
-        player * player_ptr = player_list;
-        while (player_ptr != NULL) {
-            add_to_hand(player_ptr->hands, draw_card());
-            player_ptr = player_ptr->next;
+        player * p_ptr = p_list;
+        while (p_ptr != NULL) {
+            add_to_hand(p_ptr->hands, draw_card());
+            p_ptr = p_ptr->next;
         }
     }
     
@@ -310,17 +310,17 @@ card * draw_card(void) {
 // personal opinion. For this reason this method probably should
 // not be used or trusted yet.
 
-enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decision decision) {
+enum evaluation evaluate_decision(hand * h_ptr, short dealer_card, enum decision decision) {
     
-    if (decision == make_decision(hand_ptr, dealer_card)) {
+    if (decision == make_decision(h_ptr, dealer_card)) {
         return OPTIMAL;
     }
-    short total = hand_ptr->hand_total;
-    bool possible_split = ((hand_ptr->cards[0]->number == hand_ptr->cards[1]->number) && (hand_ptr->card_count == 2));
+    short total = h_ptr->hand_total;
+    bool possible_split = ((h_ptr->cards[0]->number == h_ptr->cards[1]->number) && (h_ptr->card_count == 2));
     switch (decision) {
         case HIT:
             if (possible_split) {
-                short card_number = hand_ptr->cards[0]->number;
+                short card_number = h_ptr->cards[0]->number;
                 if (card_number == 11 || card_number == 8) {
                     if (dealer_card <= 6) {
                         return BAD;
@@ -337,7 +337,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
                 }
             }
             else {
-                if (hand_ptr->aces > 0) {
+                if (h_ptr->aces > 0) {
                     if (total >= 19 && total <= 20) {
                         return AWFUL;
                     } else if (total == 18) {
@@ -364,7 +364,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
             break;
         case DOUBLE:
             if (possible_split) {
-                short card_number = hand_ptr->cards[0]->number;
+                short card_number = h_ptr->cards[0]->number;
                 if (card_number == 5) {
                     return BAD;
                 } else {
@@ -372,7 +372,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
                 }
             }
             else {
-                if (hand_ptr->aces > 0) {
+                if (h_ptr->aces > 0) {
                     if (total >= 19 && total <= 20) {
                         return AWFUL;
                     } else if (total == 18) {
@@ -403,7 +403,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
             break;
         case SPLIT:
         {
-            short card_number = hand_ptr->cards[0]->number;
+            short card_number = h_ptr->cards[0]->number;
             if (card_number == 10) {
                 return AWFUL;
             } else {
@@ -413,7 +413,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
             break;
         case STAND:
             if (possible_split) {
-                short card_number = hand_ptr->cards[0]->number;
+                short card_number = h_ptr->cards[0]->number;
                 if (card_number == 11 || card_number == 8) {
                     if (dealer_card <= 6) {
                         return BAD;
@@ -434,7 +434,7 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
                 }
             }
             else {
-                if (hand_ptr->aces > 0) {
+                if (h_ptr->aces > 0) {
                     if (total == 18) {
                         return DECENT;
                     } else {
@@ -468,33 +468,33 @@ enum evaluation evaluate_decision(hand * hand_ptr, short dealer_card, enum decis
 // This method evaluates the outcome of each player's hands and pays out
 // accordingly. Winstreaks are also updated.
 
-void evaluate_winnings(player * player_list, hand * dealer_hand, bool print) {
+void evaluate_winnings(player * p_list, hand * dealer_hand, bool print) {
     
-    player * player_ptr = player_list;
+    player * p_ptr = p_list;
     
-    while (player_ptr != NULL) {
-        hand * hand_ptr = player_ptr->hands;
+    while (p_ptr != NULL) {
+        hand * h_ptr = p_ptr->hands;
         
-        while (hand_ptr != NULL) {
-            if (print) printf("%s: ", player_ptr->id);
+        while (h_ptr != NULL) {
+            if (print) printf("%s: ", p_ptr->id);
 
-            short winnings = player_ptr->bet.amount * player_ptr->bet.multiplier;
+            short winnings = p_ptr->bet.amount * p_ptr->bet.multiplier;
             enum outcome outcome = 0;
-            winnings *= (hand_ptr->is_bj) ? 1.5 : 1;
-            winnings *= (hand_ptr->is_double) ? 2 : 1;
+            winnings *= (h_ptr->is_bj) ? 1.5 : 1;
+            winnings *= (h_ptr->is_double) ? 2 : 1;
             
             // Evaluate the outcome of each hand
-            if (hand_ptr->hand_total > 21) {
+            if (h_ptr->hand_total > 21) {
                 outcome = LOSE;
-            } else if (hand_ptr->hand_total == dealer_hand->hand_total) {
+            } else if (h_ptr->hand_total == dealer_hand->hand_total) {
                 if (dealer_hand->is_bj) {
                     outcome = PUSH;
-                } else if (hand_ptr->is_bj) {
+                } else if (h_ptr->is_bj) {
                     outcome = WIN;
                 } else {
                     outcome = PUSH;
                 }
-            } else if ((dealer_hand->hand_total > 21) || (hand_ptr->hand_total > dealer_hand->hand_total)) {
+            } else if ((dealer_hand->hand_total > 21) || (h_ptr->hand_total > dealer_hand->hand_total)) {
                 outcome = WIN;
             } else {
                 outcome = LOSE;
@@ -505,22 +505,21 @@ void evaluate_winnings(player * player_list, hand * dealer_hand, bool print) {
                 case LOSE:
                     if (print) printf("Lose %hd.\n", winnings);
                     winnings *= -1;
-                    player_ptr->win_streak = 0;
+                    p_ptr->win_streak = 0;
                     break;
                 case PUSH:
                     if (print) printf("Push.\n");
                     winnings = 0;
-                    player_ptr->win_streak = 0;
+                    p_ptr->win_streak = 0;
                     break;
                 case WIN:
-                    if (print) printf("%sWin %hd.\n", (hand_ptr->is_bj) ? "Blackjack! " : "", winnings);
-                    player_ptr->win_streak++;
+                    if (print) printf("%sWin %hd.\n", (h_ptr->is_bj) ? "Blackjack! " : "", winnings);
+                    p_ptr->win_streak++;
             }
-       
-            player_ptr->winnings += winnings;
-            hand_ptr = hand_ptr->next;
+            p_ptr->winnings +=  winnings;
+            h_ptr = h_ptr->next;
         }
-        player_ptr = player_ptr->next;
+        p_ptr = p_ptr->next;
     }
     
 } // evaluate_winnings() //
@@ -530,26 +529,26 @@ void evaluate_winnings(player * player_list, hand * dealer_hand, bool print) {
 // This method deallocates the memory for a player, which includes
 // freeing each hand and it's cards, the id, and the player itself.
 
-void free_players(player * player_list, bool reset) {
+void free_players(player * p_list, bool reset) {
     
-    player * player_ptr = player_list;
+    player * p_ptr = p_list;
     
-    while (player_ptr != NULL) {
-        hand * hand_ptr = player_ptr->hands;
+    while (p_ptr != NULL) {
+        hand * h_ptr = p_ptr->hands;
         
         // Free each hand and its card array
-        while (hand_ptr != NULL) {
-            free(hand_ptr->cards);
-            hand_ptr->cards = NULL;
-            hand * temp = hand_ptr;
-            hand_ptr = hand_ptr->next;
+        while (h_ptr != NULL) {
+            free(h_ptr->cards);
+            h_ptr->cards = NULL;
+            hand * temp = h_ptr;
+            h_ptr = h_ptr->next;
             free(temp);
             temp = NULL;
         }
         
-        player_ptr->hands = NULL;
-        player * temp = player_ptr;
-        player_ptr = player_ptr->next;
+        p_ptr->hands = NULL;
+        player * temp = p_ptr;
+        p_ptr = p_ptr->next;
         
         if (reset) {
             // If only resetting, we need to reallocate a hand to the player
@@ -642,17 +641,18 @@ float get_input(void) {
 // This method hits the dealer until it has reached 17, and hits
 // again if there is a soft 17 and the rule is enabled in settings.
 
-void hit_dealer(dealer * dealer) {
+void hit_dealer(dealer * d_ptr) {
     
     // Hit dealer until cards total 17 or more
-    while (dealer->hand.hand_total < 17) {
-        add_to_hand(&(dealer->hand), draw_card());
+    while (d_ptr->hand.hand_total < 17) {
+        add_to_hand(&(d_ptr->hand), draw_card());
     }
     
     // Hit soft 17 if it is enabled
     if (g_settings.soft_rule) {
-        while ((dealer->hand.hand_total == 17) && (dealer->hand.aces > 0)) {
-            add_to_hand(&dealer->hand, draw_card());
+        while ((d_ptr->hand.hand_total == 17) && (d_ptr->hand.aces > 0)) {
+            add_to_hand(&d_ptr->hand, draw_card());
+            hit_dealer(d_ptr);
         }
     }
     
@@ -663,36 +663,36 @@ void hit_dealer(dealer * dealer) {
 // This method autonomously hits a player based on the result of the
 // make_decision() method.
 
-void hit_players(player * player_list, short dealer_card) {
+void hit_players(player * p_list, short dealer_card) {
     
-    player * player_ptr = player_list;
-    while (player_ptr != NULL) {
+    player * p_ptr = p_list;
+    while (p_ptr != NULL) {
         
         // Hit hand by hand
-        hand * hand_ptr = player_ptr->hands;
-        while (hand_ptr != NULL) {
+        hand * h_ptr = p_ptr->hands;
+        while (h_ptr != NULL) {
             
             // Get decision and act accordingly
-            enum decision decision = make_decision(hand_ptr, dealer_card);
+            enum decision decision = make_decision(h_ptr, dealer_card);
             while (decision != STAND) {
                 if (decision == SPLIT) {
-                    split_hand(hand_ptr, true);
+                    split_hand(h_ptr, true);
                 } else {
                     
                     // Double if necessary then hit regardless
-                    if (decision == DOUBLE && (hand_ptr->card_count == 2)) {
-                        hand_ptr->is_double = true;
+                    if (decision == DOUBLE && (h_ptr->card_count == 2)) {
+                        h_ptr->is_double = true;
                     }
-                    add_to_hand(hand_ptr, draw_card());
+                    add_to_hand(h_ptr, draw_card());
                 }
-                if (hand_ptr->is_double) {
+                if (h_ptr->is_double) {
                     break;
                 }
-                decision = make_decision(hand_ptr, dealer_card);
+                decision = make_decision(h_ptr, dealer_card);
             }
-            hand_ptr = hand_ptr->next;
+            h_ptr = h_ptr->next;
         }
-        player_ptr = player_ptr->next;
+        p_ptr = p_ptr->next;
     }
     
 } // hit_player() //
@@ -705,7 +705,7 @@ void hit_players(player * player_list, short dealer_card) {
 // FILE_ERROR to be handled. This method will successfully read
 // players both with a specified ID and without.
 
-short load_players(char * file_name, player ** player_head) {
+short load_players(char * file_name, player ** p_list_ptr) {
     
     // Open file and handle an error
     FILE *f = fopen(file_name, "r");
@@ -741,25 +741,25 @@ short load_players(char * file_name, player ** player_head) {
         }
         
         // Create new player and convert char to enum
-        player * new_player_ptr;
+        player * new_p_ptr;
         if (algorithm == 'C') {
-            new_player_ptr = create_player(id, CONSTANT, ratio, intensity, bet_amount);
+            new_p_ptr = create_player(id, CONSTANT, ratio, intensity, bet_amount);
         } else if (algorithm == 'L') {
-            new_player_ptr = create_player(id, LINEAR, ratio, intensity, bet_amount);
+            new_p_ptr = create_player(id, LINEAR, ratio, intensity, bet_amount);
         } else if (algorithm == 'E') {
-            new_player_ptr = create_player(id, EXPONENTIAL, ratio, intensity, bet_amount);
+            new_p_ptr = create_player(id, EXPONENTIAL, ratio, intensity, bet_amount);
         } else {
             continue;
         }
         
         // Set head or fill next attribute
         if (prev_player == NULL) {
-            (*player_head) = new_player_ptr;
+            (*p_list_ptr) = new_p_ptr;
         }
         else {
-            prev_player->next = new_player_ptr;
+            prev_player->next = new_p_ptr;
         }
-        prev_player = new_player_ptr;
+        prev_player = new_p_ptr;
         player_counter++;
         if (player_counter == MAX_PLAYER) {
             break;
@@ -794,19 +794,19 @@ void load_settings(char * file) {
 // cards and the dealer's showing card. The by-case decisions are
 // found in the decision matrices.
 
-enum decision make_decision(hand * hand, short dealer_card) {
+enum decision make_decision(hand * h_ptr, short dealer_card) {
     
     char decision = 0;
 
     // Check if the hand has the same two cards for split
-    if ((hand->cards[0]->number == hand->cards[1]->number) && (hand->card_count == 2)) {
-        decision = split_decision_matrix[hand->cards[0]->number - 2][dealer_card - 2];
+    if ((h_ptr->cards[0]->number == h_ptr->cards[1]->number) && (h_ptr->card_count == 2)) {
+        decision = split_decision_matrix[h_ptr->cards[0]->number - 2][dealer_card - 2];
     }
     
     // Check if the hand contains an ace
-    else if (hand->aces > 0) {
+    else if (h_ptr->aces > 0) {
         
-        short not_ace = hand->hand_total - 11;
+        short not_ace = h_ptr->hand_total - 11;
         if (not_ace >= 8) {
             return STAND;
         }
@@ -816,12 +816,12 @@ enum decision make_decision(hand * hand, short dealer_card) {
     
     else {
         
-        if (hand->hand_total >= 17) {
+        if (h_ptr->hand_total >= 17) {
             return STAND;
-        } else if (hand->hand_total <= 8) {
+        } else if (h_ptr->hand_total <= 8) {
             return HIT;
         }
-        decision = reg_decision_matrix[hand->hand_total - 9][dealer_card - 2];
+        decision = reg_decision_matrix[h_ptr->hand_total - 9][dealer_card - 2];
         
     }
     
@@ -863,22 +863,22 @@ void print_deck(void) {
 void print_hand(hand * hand_head, bool hide) {
     
     bool first_card = true;
-    hand * hand_ptr = hand_head;
+    hand * h_ptr = hand_head;
     
     printf("|");
         
-    for (int i = 0; i < hand_ptr->card_count; i++) {
+    for (int i = 0; i < h_ptr->card_count; i++) {
         if (first_card && hide) {
             printf("?");
             first_card = false;
         } else {
-            printf("%s", hand_ptr->cards[i]->rank);
+            printf("%s", h_ptr->cards[i]->rank);
         }
         printf("|");
     }
         
     if (!hide) {
-        printf(" (%hd) ", hand_ptr->hand_total);
+        printf(" (%hd) ", h_ptr->hand_total);
     }
         
 } // print_hand() //
@@ -894,27 +894,27 @@ char * print_hand_str(hand * hand_head, bool hide) {
     
     char * result_str = malloc(200);
     bool first_card = true;
-    hand * hand_ptr = hand_head;
-    while (hand_ptr != NULL) {
+    hand * h_ptr = hand_head;
+    while (h_ptr != NULL) {
         strcat(result_str, "|");
         
-        for (int i = 0; i < hand_ptr->card_count; i++) {
+        for (int i = 0; i < h_ptr->card_count; i++) {
             if (first_card && hide) {
                 strcat(result_str, "?");
                 first_card = false;
             } else {
-                strcat(result_str, hand_ptr->cards[i]->rank);
+                strcat(result_str, h_ptr->cards[i]->rank);
             }
             strcat(result_str, "|");
         }
         
         if (!hide) {
             char total_str[7];
-            sprintf(total_str, " (%hd) ", hand_ptr->hand_total);
+            sprintf(total_str, " (%hd) ", h_ptr->hand_total);
             strcat(result_str, total_str);
         }
-        hand_ptr = hand_ptr->next;
-        if (hand_ptr != NULL) {
+        h_ptr = h_ptr->next;
+        if (h_ptr != NULL) {
             strcat(result_str, "\n");
         }
     }
@@ -927,13 +927,13 @@ char * print_hand_str(hand * hand_head, bool hide) {
 // This method prints out player hands with an indicator as
 // to which will be acted upon in case of a split.
 
-void print_player_hands(player * player_ptr, bool is_split, short counter) {
+void print_player_hands(player * p_ptr, bool is_split, short counter) {
     
     short hand_counter = 1;
-    hand * hand_ptr = player_ptr->hands;
-    while (hand_ptr != NULL) {
+    hand * h_ptr = p_ptr->hands;
+    while (h_ptr != NULL) {
         
-        printf("%s hand", player_ptr->id);
+        printf("%s hand", p_ptr->id);
         
         if (is_split) {
             printf(" (%hd): ", hand_counter);
@@ -942,14 +942,14 @@ void print_player_hands(player * player_ptr, bool is_split, short counter) {
             printf(": ");
         }
         
-        print_hand(hand_ptr, false);
+        print_hand(h_ptr, false);
         
         // Add hand indicator
         if ((hand_counter == counter) && is_split) {
             printf(" <");
         }
         printf("\n");
-        hand_ptr = hand_ptr->next;
+        h_ptr = h_ptr->next;
         hand_counter++;
     }
     
@@ -961,17 +961,17 @@ void print_player_hands(player * player_ptr, bool is_split, short counter) {
 // freeing the dealer's array of cards. Dealers are not allocated
 // dynamically so we need not free a dealer struct.
 
-void reset_dealer(dealer * dealer) {
+void reset_dealer(dealer * d_ptr) {
     
-    hand * hand_ptr = &dealer->hand;
-    free(hand_ptr->cards);
-    hand_ptr->cards = malloc(sizeof(card *) * 2);
+    hand * h_ptr = &d_ptr->hand;
+    free(h_ptr->cards);
+    h_ptr->cards = malloc(sizeof(card *) * 2);
     
     // Reset dealer values
-    dealer->hand.aces = 0;
-    dealer->hand.card_count = 0;
-    dealer->hand.is_bj = false;
-    dealer->hand.hand_total = 0;
+    d_ptr->hand.aces = 0;
+    d_ptr->hand.card_count = 0;
+    d_ptr->hand.is_bj = false;
+    d_ptr->hand.hand_total = 0;
     
 } // reset_dealer() //
 
@@ -983,42 +983,41 @@ void reset_dealer(dealer * dealer) {
 // differently-numbered card is drawn. This method can successfully
 // run until a stack-overflow, theoretically splitting hands indefinitely.
 
-void split_hand(hand * hand_ptr, bool recurse) {
+void split_hand(hand * h_ptr, bool recurse) {
     
     // Create new hand
-    hand * new_hand_ptr = create_hand();
-    if (new_hand_ptr == NULL) {
+    hand * new_h_ptr = create_hand();
+    if (new_h_ptr == NULL) {
         exit(MEMORY_ERROR);
     }
-    add_to_hand(new_hand_ptr, hand_ptr->cards[1]);
-    new_hand_ptr->next = hand_ptr->next;
+    add_to_hand(new_h_ptr, h_ptr->cards[1]);
+    new_h_ptr->next = h_ptr->next;
     
-    // Modify aces variable for each hand: 2 -> 1, 0 -> 0
-    hand_ptr->aces /= 2;
-    new_hand_ptr->aces = hand_ptr->aces / 2;
+    // Aces will be 1 if there are 2 present
+    new_h_ptr->aces = h_ptr->aces;
     
     // Update and hit the original hand. Since we are replacing the second card,
     // we must manually change the pointer instead of using add_to_hand().
     card * new_card = draw_card();
-    hand_ptr->cards[1] = new_card;
-    hand_ptr->hand_total = hand_ptr->cards[0]->number + new_card->number;
+    h_ptr->cards[1] = new_card;
+    h_ptr->hand_total = h_ptr->cards[0]->number + new_card->number;
     if (new_card->number == 11) {
-        hand_ptr->aces++;
+        h_ptr->aces++;
     }
-    hand_ptr->next = new_hand_ptr;
+    h_ptr->next = new_h_ptr;
     
     // Check for another split and recurse if specified
-    if (new_card->number == hand_ptr->cards[0]->number && recurse) {
-        split_hand(hand_ptr, true);
+    if (new_card->number == h_ptr->cards[0]->number && recurse) {
+        split_hand(h_ptr, true);
     }
     
     // Draw a card to the new hand
     new_card = draw_card();
-    add_to_hand(new_hand_ptr, new_card);
+    add_to_hand(new_h_ptr, new_card);
     
     // Check for another split for new hand
-    if (new_card->number == hand_ptr->cards[0]->number && recurse) {
-        split_hand(new_hand_ptr, true);
+    if (new_card->number == h_ptr->cards[0]->number && recurse) {
+        split_hand(new_h_ptr, true);
     }
     
 } // split_hand() //
@@ -1047,7 +1046,6 @@ void shuffle_deck(void) {
             g_deck[j] = temp;
         }
     }
-    
     g_deck_index = 0;
     
 } // shuffle_deck() //
@@ -1058,7 +1056,7 @@ void shuffle_deck(void) {
 // file, and returns the number of players that were
 // successfully written to the file.
 
-short write_players(char * file_path, player * player_list) {
+short write_players(char * file_path, player * p_list) {
     
     FILE *f = fopen(file_path, "w");
     if (f == NULL) {
@@ -1066,11 +1064,11 @@ short write_players(char * file_path, player * player_list) {
     }
     
     short player_counter = 0;
-    while (player_list != NULL) {
+    while (p_list != NULL) {
         
         // Convert enumerated algorithm to char
         char algorithm = 0;
-        switch (player_list->bet.algorithm) {
+        switch (p_list->bet.algorithm) {
             case CONSTANT:
                 algorithm = 'C';
                 break;
@@ -1082,13 +1080,13 @@ short write_players(char * file_path, player * player_list) {
         }
         
         // Write to file and check for errors
-        int ret_val = fprintf(f, "%s,%c,%f,%hd,%hd\n", player_list->id, algorithm, player_list->bet.ratio, player_list->bet.amount, player_list->bet.intensity);
+        int ret_val = fprintf(f, "%s,%c,%f,%hd,%hd\n", p_list->id, algorithm, p_list->bet.ratio, p_list->bet.amount, p_list->bet.intensity);
         if (ret_val < 0) {
             break;
         }
         
         player_counter++;
-        player_list = player_list->next;
+        p_list = p_list->next;
     }
     fclose(f);
     return player_counter;
